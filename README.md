@@ -10,7 +10,5 @@ create MeanderPy channel object from .csv of centerline and widths, both output 
 run model until a predetermined number of cutoffs have occured
 
 ## Dependencies
-MeanderPy: https://github.com/zsylvester/meanderpy
-Numoy
-Scipy
-Pandas
+Numpy, Scipy, Pandas, and MeanderPy: https://github.com/zsylvester/meanderpy
+
