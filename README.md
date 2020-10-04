@@ -1,6 +1,6 @@
 # Cutoffs
 
-A series of functions for integrating real centerlines with MeanderPy, simulating migration, and analyzing cutoff distributions. 
+A library for integrating real centerlines with MeanderPy, simulating migration, and analyzing cutoff distributions. 
 
 ## list of functions
 
