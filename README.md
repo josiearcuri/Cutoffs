@@ -1,6 +1,6 @@
 # Cutoffs
 
-a series of functions meant to supplement MeanderPy.
+A series of functions for integrating real centerlines with MeanderPy, simulating migration, and analyzing cutoff distributions. 
 
 ## list of functions
 
