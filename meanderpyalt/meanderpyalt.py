@@ -3,16 +3,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import norm
 import scipy.interpolate
-from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
-from scipy import ndimage
+#from scipy import ndimage
 import pandas as pd
-from PIL import Image, ImageDraw
-from skimage import measure
-from skimage import morphology
+#from PIL import Image, ImageDraw
+#from skimage import measure
+#from skimage import morphology
 from matplotlib.colors import LinearSegmentedColormap
 import time, sys
-import numba
+#import numba
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 
@@ -68,10 +67,8 @@ class Cutoff:
         self.W = W
         self.D = D
         self.dist = np.mean(dist)
-        #self.cut_len = 1.19*self.dist        
-        #self.max_curv = max_curv*W
         self.time = time
-        print("cutoff at " + str(time))
+        #print("cutoff at " + str(time))
 class ChannelBelt:
     """class for ChannelBelt objects"""
     def __init__(self, channels, cutoffs, cl_times, cutoff_times, cutoff_dists, decay_rate, bump_scale):
