@@ -11,7 +11,6 @@ def cutoff_distributions(cutoffs, year, filepath):
     times = [i.time for i in cutoffs]
     
     cuts = pd.DataFrame({'downstream_distance': distances, 'time': times})
-
     newcuts = cuts.to_csv(filepath+str(year)+"years_cutoff_distributions.csv", index_label = "Cutoff")
     return cuts
     
