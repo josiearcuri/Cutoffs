@@ -9,7 +9,6 @@ def cutoff_distributions(cutoffs, year, filepath):
     """pull cutoff data from channel belt object and export csv, return dataframe for plotting"""
     distances = [i.dist for i in cutoffs]
     times = [i.time for i in cutoffs]
-    
     cuts = pd.DataFrame({'downstream_distance': distances, 'time': times})
     newcuts = cuts.to_csv(filepath+str(year)+"years_cutoff_distributions.csv", index_label = "Cutoff")
     return cuts
