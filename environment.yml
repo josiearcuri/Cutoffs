@@ -1,0 +1,14 @@
+name: cutoffsenv2
+channels:
+  - default
+dependencies:
+  - astropy
+  - matplotlib
+  - numpy
+  - pandas
+  - pillow
+  - pip
+  - python
+  - scipy
+  - seaborn
+
