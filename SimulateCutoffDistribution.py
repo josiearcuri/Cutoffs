@@ -1,7 +1,6 @@
 
 import math
 import matplotlib.pyplot as plt
-
 import cutoffs as co
 import meanderpyalt as mp
 
@@ -10,7 +9,7 @@ import meanderpyalt as mp
 
 #set variables
 D = 10;                       
-nit = 5000                   # number of iterations, run for at least 5000 years to see clustering
+nit = 50000                   # number of iterations, run for at least 5000 years to see clustering
 Cf = 0.022                # dimensionless Chezy friction factor
 kl = 5/(365*24*60*60.0)   # migration rate constant (m/s)
 kv =  1.0E-11              # vertical slope-dependent erosion rate constant (m/s)
@@ -22,7 +21,7 @@ bump_scale = 1.5            #to multiple kl by, range between 1 and 3, set to 0 
 Sl = 0.01                    # initial slope (matters more for submarine channels than rivers)
 pad= 20                     #depends on sample
 
-result_dir = "sample_results/" ##change this to wherevery you want to save your results
+result_dir = "C:/Users/Josie/Desktop/" ##change this to wherevery you want to save your results
 filelist = ['sample_data/Reach6CL1984.csv','sample_data/Reach6CL_widths1984.csv']
 
 
