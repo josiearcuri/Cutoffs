@@ -13,7 +13,8 @@ functions to..
 * analyze cutoff distrubutions as point process for clustering with Ripley's K function, compare to CSR process with monte carlo simulations
 
 ## Dependencies
-Numpy, Scipy, Pandas, Astropy, Matplotlib, PIL, skimage, Seaborn 
+Numpy, Scipy, Pandas, Astropy, Matplotlib, Seaborn
+all included in environment file
 
 ## References
 [1]https://github.com/zsylvester/meanderpy  
