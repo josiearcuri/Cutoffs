@@ -210,6 +210,7 @@ class ChannelBelt:
         plt.axis('equal')
 
         return fig
+
 def resample_centerline(x,y,z,deltas):
     dx, dy, dz, ds, s = compute_derivatives(x,y,z) # compute derivatives
     # resample centerline so that 'deltas' is roughly constant
@@ -260,6 +261,53 @@ def generate_initial_channel(W,D,Sl,deltas,pad,n_bends):
     z = np.linspace(0,deltaz,len(x))[::-1] # z coordinate
     return Channel(x,y,z,W,D)
 
+
+def generate_channel_from_file(filelist, slope = .01, D_in= 10, smooth_factor=.25, matlab_corr= -1):
+    """function for creating a MeanderPy Channel object from an externally-sourced centerline in .csv file format.
+        inputs:
+        filelist - filelist must be a list of filepaths.  thie first should be a csv containing x and y values for each point on a centerline.  The second should be the widths of each point along the centerline
+        slope - average channel slope (default = .01)
+        D_in - channel depth (m, default = 10)
+        smooth_factor - fraction of centerline points to sample from spline (default = 1/4)
+        matlab_corr - 1 if y-axis need not be flipped, -1 for centerlines exported from matlab and need flipping
+        
+        outputs:
+        ch - MeanderPy object of channel centerline
+        x - uninterpolated array of x coordinates
+        y - uninterpolated array of y coordinates
+        z - array of z coordinates
+        cl_len - length of  centerline(m) """
+    #use pandas to load x,y coordinates and widths of centerline from csv
+    varlist = [pd.read_csv(file, sep = ',', header=None).values for file in filelist]
+    x = varlist[0][:,0]*30  ## x-dim array in Sm
+    y = varlist[0][:,1]*matlab_corr*30 ##southern hemisphere y-dim array in m
+    
+    # shift coordinates so all are positive
+    if sum(n < 0 for n in y) > 0:
+        y = y-min(y)## y-dim earray in m 
+    if sum(n < 0 for n in x) > 0:
+        x = x-min(x)
+        
+    #average over widths to get a reach-constant width scalar
+    W = np.mean(varlist[1][:,0])*30
+  
+    ## water depth scalar#
+    D = D_in  
+    # Linear length along the line, add a zero for first point:
+    points = np.vstack([x, y]).T
+    distance = np.cumsum( np.sqrt(np.sum( np.diff(points, axis=0)**2, axis=1 )) )
+    distance = np.insert(distance, 0, 0)
+
+    # Build a list of the spline function, one for each dimension:
+    splines = [InterpolatedUnivariateSpline(distance, coords) for coords in points.T]
+
+    # Compute the spline for the smoothed(sampled) distances:
+    points_fitted = np.vstack([spl(np.linspace(0, distance[-1],round(len(x)*smooth_factor))) for spl in splines])
+    
+    ## z-dim array, interpolated with constant slope along points of centerline.  assumes centerline points are equidistantly placed along original centerline. 
+    z = np.interp(np.asarray(range(len(points_fitted[0]))), [1, len(points_fitted[0])], [(slope*distance[-1]), 0]) 
+    deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
+    return [Channel(points_fitted[0],points_fitted[1],z,W,D), x, y, z, distance[-1], deltas]
 
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     """compute migration rate as weighted sum of upstream curvatures
