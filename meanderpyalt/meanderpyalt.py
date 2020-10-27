@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import norm
 import scipy.interpolate
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
 #from scipy import ndimage
 import pandas as pd
