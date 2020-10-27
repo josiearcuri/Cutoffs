@@ -1,12 +1,13 @@
 import pandas as pd
-from scipy.interpolate import InterpolatedUnivariateSpline
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.stats import RipleysKEstimator
-import os, math
+import os
+import math
 
 def cutoff_distributions(cutoffs, year, filepath):
-    """pull cutoff data from channel belt object and export csv, return dataframe for plotting"""
+    """pull cutoff data from channel belt object and export csv, return dataframe for plotting
+    """
     distances = [i.dist for i in cutoffs]
     times = [i.time for i in cutoffs]
     cuts = pd.DataFrame({'downstream_distance': distances, 'time': times})
@@ -14,7 +15,7 @@ def cutoff_distributions(cutoffs, year, filepath):
     return cuts
     
 def plot_cutoff_distributions(cuts, year, filepath):
-    """save scatter plot of cutoff distributions through time along centerline"""
+
     f = plt.figure()
     
     sc = plt.scatter(cuts['time'], cuts['downstream_distance'], c = 'black', s = 1, edgecolor = 'black')
@@ -26,7 +27,6 @@ def plot_cutoff_distributions(cuts, year, filepath):
     plt.savefig(filepath+str(year) + "yrs_timevsspace.jpg")    
 
 def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'): 
-     """test cutoffs for clustering and compare to CSR generated from monte carlo simulations"""
     #load estimator
     Kest = RipleysKEstimator(area=math.ceil(np.max(cutoffs.time)), x_max=math.ceil(np.max(cutoffs.time)), y_max=1, x_min=0, y_min=0)
     #load sample
