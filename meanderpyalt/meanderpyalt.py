@@ -320,7 +320,7 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     R0 - nominal migration rate (dimensionless curvature * migration rate constant)"""
     R1 = np.zeros(ns) # preallocate adjusted channel migration rate
      # padding at upstream end can be shorter than padding on downstream end
-    pad1 = 10*pad
+    
     if pad<5:
         pad = 5
     for i in range(pad,ns):
@@ -330,11 +330,11 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
 
 #########Periodic Boundary#########################
     for i in range(0,pad):
-        buddy = ns-pad1
+        
         si2 = np.hstack((np.array([0]),np.cumsum(ds[i-1::-1]))) 
-        si2_bound = np.hstack((si2, si2[-1]+np.cumsum(ds[ns::buddy])))# distance along centerline, backwards from corresponding point on downstream boundary
+        si2_bound = np.hstack((si2, si2[-1]+np.cumsum(ds[ns::-1])))# distance along centerline, backwards from corresponding point on downstream boundary
         G = np.exp(-alpha*si2_bound) # convolution vector for downstream boundary to wrap around 
-        R0_bound = np.hstack((R0[i::-1], R0[ns::buddy]))
+        R0_bound = np.hstack((R0[i::-1], R0[ns::-1]))
         R1[i] = omega*R0[i] + gamma*np.sum(R0_bound*G)/np.sum(G) # main equation, weighted sum of curvatures upstream fromdownstream boundary - periodic boundary condition
    
     
