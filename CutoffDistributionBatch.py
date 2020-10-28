@@ -21,7 +21,7 @@ bump_scale = 0           #to multiple kl by, range between 1 and 3, set to 0 for
 Sl = 0.01                    # initial slope (matters more for submarine channels than rivers)
 pad= 20                     #depends on sample
 year = int(nit *dt/(365*24*60*60.0))
-result_dir = "C:/Users/Josie/Desktop/dump_justcurvature3/" ##change this to wherevery you want to save your results
+result_dir = "C:/Users/Josie/Desktop/dump_justcurvature20/" ##change this to wherevery you want to save your results
 filelist = ['sample_data/Reach6CL1984.csv','sample_data/Reach6CL_widths1984.csv']
 
 #Simulate migration on real centerline, keeoing track of cutoff locationa nd times#
