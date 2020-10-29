@@ -16,12 +16,12 @@ kv =  1.0E-11              # vertical slope-dependent erosion rate constant (m/s
 dt = 365*24*60*60.0     # time step (s)
 dens = 100                  # density of water (kg/m3)
 saved_ts = 1               # which time steps will be saved every year
-decay_rate = 1;         #ranges between 1/3 to 1/10, eventually this will not be a constant
-bump_scale = 0           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
+decay_rate = 1/10;         #ranges between 1/3 to 1/10, eventually this will not be a constant
+bump_scale = 2;           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
 Sl = 0.01                    # initial slope (matters more for submarine channels than rivers)
-pad= 10                     #depends on sample
+pad= 20                     #depends on sample
 year = int(nit *dt/(365*24*60*60.0))
-result_dir = "C:/Users/Josie/Desktop/dump_justcurvature_pad10/" ##change this to wherevery you want to save your results
+result_dir = "C:/Users/Josie/Desktop/dump_nonlocaleffects_pad20/" ##change this to wherevery you want to save your results
 filelist = ['sample_data/Reach6CL1984.csv','sample_data/Reach6CL_widths1984.csv']
 
 #Simulate migration on real centerline, keeoing track of cutoff locationa nd times#
