@@ -43,16 +43,16 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
         z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
         mc[:,i] = Kest(data=z, radii=r, mode='ohser')
 
-   
+    data2 = np.zeros((num_samples,2)) 
     ###check if normal distribution shows up as clustered 
-    data[:,0] = np.random.normal(.5, .01,num_samples)
-    data[:,1] = np.random.normal(.5, 100, num_samples)*math.ceil(np.max(cutoffs.time))
+    data2[:,0] = np.random.normal(.5, .01,num_samples)
+    data2[:,1] = np.random.normal(.5, 10, num_samples)*math.ceil(np.max(cutoffs.time))
     
     # compute bounds of CSR envelope, transform y values for plotting
     upper = np.subtract(np.sqrt(np.divide(np.ma.max(mc, axis = 1),math.pi)), r)
     lower = np.subtract(np.sqrt(np.divide(np.ma.min(mc, axis = 1),math.pi)), r)
     middle = np.subtract(np.sqrt(np.divide(np.ma.mean(mc, axis = 1),math.pi)), r)
-    data = np.subtract(np.sqrt(np.divide(Kest(data=data, radii=r, mode='ohser'),math.pi)), r)
+    data = np.subtract(np.sqrt(np.divide(Kest(data=data2, radii=r, mode='ohser'),math.pi)), r)
     
     #check for significant nonrandomness
     clustered = data[np.where(data>upper)]
