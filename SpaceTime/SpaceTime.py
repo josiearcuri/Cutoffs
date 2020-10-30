@@ -1,5 +1,7 @@
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+from scipy.spatial.distance import pdist
 
 
 __all__ = ['RipleysKEstimator_spacetime']
@@ -7,11 +9,11 @@ __all__ = ['RipleysKEstimator_spacetime']
 
 class RipleysKEstimator_spacetime:
     def __init__(self,t_max=None, d_max=None, t_min=None, d_min=None):
-        self.area = (t_max-tmin)*(d_max-d_min)
-        self.x_max = t_max
-        self.y_max = d_max
-        self.x_min = t_min
-        self.y_min = d_min
+        self.area = (t_max-t_min)*(d_max-d_min)
+        self.t_max = t_max
+        self.d_max = d_max
+        self.t_min = t_min
+        self.d_min = d_min
 
     @property
     def area(self):
@@ -29,7 +31,7 @@ class RipleysKEstimator_spacetime:
     def d_max(self):
         return self._d_max
 
-    @y_max.setter
+    @d_max.setter
     def d_max(self, value):
         if value is None or isinstance(value, (float, int)):
             self._y_max = value
@@ -78,13 +80,15 @@ class RipleysKEstimator_spacetime:
     
     def _pairwise_diffs(self, data):
         npts = len(data)
-        diff = np.zeros(shape=(npts * (npts - 1) // 2, 2), dtype=np.double)
+        diff = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double)
         k = 0
         for i in range(npts - 1):
             size = npts - i - 1
             diff[k:k + size] = abs(data[i] - data[i+1:])
             k += size
-        return diff[1], diff[0]
+        
+        plt.show()
+        return diff
     
     def evaluate(self, data, radii_space, radii_time):
         data = np.asarray(data)
@@ -94,13 +98,18 @@ class RipleysKEstimator_spacetime:
                              'number of observed points.')
 
         npts = len(data)
-        ripley = np.zeros(len(radii_time), len(radii_space))
+        ripley = np.zeros((len(radii_time), len(radii_space)))
                 
-        deltatime, deltaspace = self._pairwise_diffs(data)
+        deltaspace = self._pairwise_diffs(data[:,0])
+        deltatime = self._pairwise_diffs(data[:,1])
+  
         for d in range(len(radii_space)):
             for t in range(len(radii_time)):
-                ripley[t,d] = ((deltatime < radii_time[t])+(deltaspace<radii_space[d])//2).sum()
-        ripley = (1/(npts*(npts-1))*ripley*2*self.area
+                idx_time = (deltatime < radii_time[t])
+                idx_space = (deltaspace < radii_space[d])
+                ripley[t,d]  = np.count_nonzero(idx_time==idx_space)
+             
+        ripley = ripley*self.area/(npts*npts)
         return ripley
                 
             

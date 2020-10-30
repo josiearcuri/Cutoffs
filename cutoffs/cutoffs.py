@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy.stats import RipleysKEstimator
+from matplotlib import cm
+from SpaceTime import RipleysKEstimator_spacetime
 import os
 import math
 
@@ -28,63 +29,67 @@ def plot_cutoff_distributions(cuts, year, filepath):
 
 def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'): 
     #load estimator
-    Kest = RipleysKEstimator(area=math.ceil(np.max(cutoffs.time)), x_max=math.ceil(np.max(cutoffs.time)), y_max=1, x_min=0, y_min=0)
+    Kest = RipleysKEstimator_spacetime(t_max=year, d_max=1, t_min=0, d_min=0)
     #load sample
     data = cutoffs[['downstream_distance', 'time']].to_numpy() 
-   
+    data[0,:] = data[0,:]
     
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
-    r = np.linspace(0, math.ceil((np.max(cutoffs.time)/2)**.5))
-    mc = np.zeros((len(r), nit))
-    z = np.zeros((num_samples, 2))
-    for i in range(nit):
-        z[:,0] = np.random.random(size = num_samples)
-        z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
-        mc[:,i] = Kest(data=z, radii=r, mode='ohser')
+    r_time = np.linspace(0, math.ceil((np.max(cutoffs.time)/2)**.5), 10)
+    r_space = np.linspace(0,1, 10)
+    #mc = np.zeros((len(r), nit))
+    #z = np.zeros((num_samples, 2))
+    #for i in range(nit):
+     #   z[:,0] = np.random.random(size = num_samples)
+    #    z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
+     #   mc[:,i] = Kest(data=z, radii=r, mode='ohser')
 
-    data2 = np.zeros((num_samples,2)) 
+    #data2 = np.zeros((num_samples,2)) 
     ###check if normal distribution shows up as clustered 
-    data2[:,1] = np.random.normal(.5, .01,num_samples)
-    data2[:,0] = np.random.normal(math.ceil(np.max(cutoffs.time)), 10, num_samples)
-    plt.plot(data2[:,0], data2[:,1])
-    plt.show()
+    #data2[:,1] = np.random.normal(.5, .01,num_samples)
+    #data2[:,0] = np.random.normal(math.ceil(np.max(cutoffs.time)), 10, num_samples)
+    #plt.plot(data2[:,0], data2[:,1])
+    #plt.show()
     # compute bounds of CSR envelope, transform y values for plotting
-    upper = np.subtract(np.sqrt(np.divide(np.ma.max(mc, axis = 1),math.pi)), r)
-    lower = np.subtract(np.sqrt(np.divide(np.ma.min(mc, axis = 1),math.pi)), r)
-    middle = np.subtract(np.sqrt(np.divide(np.ma.mean(mc, axis = 1),math.pi)), r)
-    data = np.subtract(np.sqrt(np.divide(Kest(data=data2, radii=r, mode='ohser'),math.pi)), r)
+    #upper = np.subtract(np.sqrt(np.divide(np.ma.max(mc, axis = 1),math.pi)), r)
+    #lower = np.subtract(np.sqrt(np.divide(np.ma.min(mc, axis = 1),math.pi)), r)
+    #middle = np.subtract(np.sqrt(np.divide(np.ma.mean(mc, axis = 1),math.pi)), r)
+    K_dt = Kest(data=data, radii_time=r_time, radii_space=r_space)
     
     #check for significant nonrandomness
-    clustered = data[np.where(data>upper)]
-    r_clus = r[np.where(data>upper)]
-    regular = data[np.where(data<lower)]
-    r_reg = r[np.where(data<lower)]
+    #clustered = data[np.where(data>upper)]
+    #r_clus = r[np.where(data>upper)]
+    #regular = data[np.where(data<lower)]
+    #r_reg = r[np.where(data<lower)]
     
     fig = plt.figure()
     
+    ax = fig.gca(projection='3d')
     #plot CSR envelope
-    plt.plot(r, upper, color='red', ls=':', label='_nolegend_')
-    plt.plot(r, lower, color='red', ls=':', label='_nolegend_')
-    plt.plot(r, middle, color='red', ls=':', label='CSR')
+    #plt.plot(r, upper, color='red', ls=':', label='_nolegend_')
+    #plt.plot(r, lower, color='red', ls=':', label='_nolegend_')
+    #plt.plot(r, middle, color='red', ls=':', label='CSR')
     
     #plot data
-    plt.plot(r, data, color='black',label=str(num_samples)+mode +" events")
+    print(K_dt)
+    ax.plot_surface(r_time, r_space, K_dt,cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False)
 
     #plot non random k values, flag if they exist
     cluster_flag = 0
     regular_flag = 0
-    if len(clustered)>0:
-        plt.scatter(r_clus, clustered, c='purple', s=30, marker = '*', label='clustered', alpha = .5)
-        cluster_flag = 1
-    if len(regular)>0:
-        regular_flag = 1
-        plt.scatter(r_reg, regular, c='green', s=30, marker = '*', label='regularly spaced', alpha = .5)
+    #if len(clustered)>0:
+    #    plt.scatter(r_clus, clustered, c='purple', s=30, marker = '*', label='clustered', alpha = .5)
+    #    cluster_flag = 1
+    #if len(regular)>0:
+    #    regular_flag = 1
+    #    plt.scatter(r_reg, regular, c='green', s=30, marker = '*', label='regularly spaced', alpha = .5)
     
     #plot specs
-    plt.title("Monte Carlo CSR Envelope with ohser edge correction")
-    plt.legend(loc = 'upper left')
-    plt.xlabel("search radius (years)")
-    plt.ylabel("sqrt(Ripley's K/pi) - r")
+    plt.title("Homegrown space time Ripley's K")
+    #plt.legend(loc = 'upper left')
+    #plt.xlabel("search radius (years)")
+    #plt.ylabel("sqrt(Ripley's K/pi) - r")
     plt.show()
     return cluster_flag, regular_flag
