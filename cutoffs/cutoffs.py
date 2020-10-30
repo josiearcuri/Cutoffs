@@ -36,7 +36,6 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
     r = np.linspace(0, math.ceil((np.max(cutoffs.time)/2)**.5))
-    r =r[np.where(r<=50)]
     mc = np.zeros((len(r), nit))
     z = np.zeros((num_samples, 2))
     for i in range(nit):
@@ -46,8 +45,8 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
 
    
     ###check if normal distribution shows up as clustered 
-    #data[:,0] = np.random.normal(.5, .01,num_samples)
-    #data[:,1] = np.random.normal(.5, .01, num_samples)
+    data[:,0] = np.random.normal(.5, .01,num_samples)
+    data[:,1] = np.random.normal(.5, .01, num_samples)
     
     # compute bounds of CSR envelope, transform y values for plotting
     upper = np.subtract(np.sqrt(np.divide(np.ma.max(mc, axis = 1),math.pi)), r)
@@ -79,12 +78,12 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
         cluster_flag = 1
     if len(regular)>0:
         regular_flag = 1
-        plt.scatter(r_reg, regular, c='purple', s=30, marker = '*', label='regularly spaced', alpha = .5)
+        plt.scatter(r_reg, regular, c='green', s=30, marker = '*', label='regularly spaced', alpha = .5)
     
     #plot specs
     plt.title("Monte Carlo CSR Envelope with ohser edge correction")
     plt.legend(loc = 'upper left')
     plt.xlabel("search radius (years)")
     plt.ylabel("sqrt(Ripley's K/pi) - r")
-    plt.savefig(resultdir+str(year) + "yrs_clustertest.jpg")  
+    plt.show()
     return cluster_flag, regular_flag
