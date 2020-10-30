@@ -75,11 +75,11 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
     cluster_flag = 0
     regular_flag = 0
     if len(clustered)>0:
-        plt.scatter(r_clus, clustered, c='purple', s=30, marker = '*', label='clustered', alpha = .5)
+        plt.scatter(r_clus, clustered, c='purple', s=40, marker = '*', label='clustered', alpha = .5)
         cluster_flag = 1
     if len(regular)>0:
         regular_flag = 1
-        plt.scatter(r_reg, regular, c='purple', s=30, marker = '*', label='regularly spaced', alpha = .5)
+        plt.scatter(r_reg, regular, c='green', s=40, marker = '*', label='regularly spaced', alpha = .5)
     
     #plot specs
     plt.title("Monte Carlo CSR Envelope with ohser edge correction")
