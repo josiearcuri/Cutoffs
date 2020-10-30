@@ -100,7 +100,7 @@ class RipleysKEstimator_spacetime:
         for d in range(len(radii_space)):
             for t in range(len(radii_time)):
                 ripley[t,d] = ((deltatime < radii_time[t])+(deltaspace<radii_space[d])//2).sum()
-        ripley = (self.area/(npts*npts))*ripley
+        ripley = (1/(npts*(npts-1))*ripley*2*self.area
         return ripley
                 
             
