@@ -46,7 +46,7 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
    
     ###check if normal distribution shows up as clustered 
     data[:,0] = np.random.normal(.5, .01,num_samples)
-    data[:,1] = np.random.normal(.5, .01, num_samples)
+    data[:,1] = np.random.normal(.5, 100, num_samples)*math.ceil(np.max(cutoffs.time))
     
     # compute bounds of CSR envelope, transform y values for plotting
     upper = np.subtract(np.sqrt(np.divide(np.ma.max(mc, axis = 1),math.pi)), r)
