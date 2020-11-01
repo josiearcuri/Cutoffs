@@ -98,18 +98,28 @@ class RipleysKEstimator_spacetime:
                              'number of observed points.')
 
         npts = len(data)
+        intensity = npts/self.area
+        intensity_space = npts
+        intensity_time = npts/self.area
         ripley = np.zeros((len(radii_time), len(radii_space)))
-                
+        k_d = np.zeros(len(radii_space))
+        k_t = np.zeros(len(radii_time))
         deltaspace = self._pairwise_diffs(data[:,0])
         deltatime = self._pairwise_diffs(data[:,1])
   
         for d in range(len(radii_space)):
+            idx_space = (deltaspace < radii_space[d])
+            k_d[d] = (np.count_nonzero(idx_space)*radii_space[d])/(npts)
             for t in range(len(radii_time)):
                 idx_time = (deltatime < radii_time[t])
-                idx_space = (deltaspace < radii_space[d])
-                ripley[t,d]  = np.count_nonzero(idx_time==idx_space)
-             
-        ripley = ripley*self.area/(npts*npts)
-        return ripley
+                
+                k_t[t] = (np.count_nonzero(idx_time)*radii_time[t])/(npts)
+                
+                ripley[t,d]  = (np.count_nonzero(idx_time==idx_space)*radii_space[d]*radii_time[t])/(npts)
+        plt.plot(radii_space, (k_d/intensity_space)- radii_space)
+        plt.show()
+        plt.plot(radii_time,(k_t/intensity_time) - radii_time)
+        plt.show()
+        return (ripley/intensity- (radii_space*radii_time)) 
                 
             

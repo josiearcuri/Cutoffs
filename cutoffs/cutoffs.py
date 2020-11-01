@@ -32,31 +32,30 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
     Kest = RipleysKEstimator_spacetime(t_max=year, d_max=1, t_min=0, d_min=0)
     #load sample
     data = cutoffs[['downstream_distance', 'time']].to_numpy() 
-    data[0,:] = data[0,:]
     
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
-    r_time = np.linspace(0, math.ceil((np.max(cutoffs.time)/2)**.5), 10)
-    r_space = np.linspace(0,1, 10)
+    r_time = np.linspace(1, 50, 50)
+    r_space = np.linspace(1/100,.5, 50)
     #mc = np.zeros((len(r), nit))
-    #z = np.zeros((num_samples, 2))
+    z = np.zeros((num_samples, 2))
     #for i in range(nit):
      #   z[:,0] = np.random.random(size = num_samples)
     #    z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
-     #   mc[:,i] = Kest(data=z, radii=r, mode='ohser')
+    #    mc[:,:,i] = Kest(data=z, radii_time=r_time, radii_space=r_space)
 
-    #data2 = np.zeros((num_samples,2)) 
+    data2 = np.zeros((num_samples,2)) 
     ###check if normal distribution shows up as clustered 
-    #data2[:,1] = np.random.normal(.5, .01,num_samples)
-    #data2[:,0] = np.random.normal(math.ceil(np.max(cutoffs.time)), 10, num_samples)
+    data2[:,1] = np.random.random(size = num_samples)
+    data2[:,0] = np.random.normal(size = num_samples)*year
     #plt.plot(data2[:,0], data2[:,1])
     #plt.show()
     # compute bounds of CSR envelope, transform y values for plotting
-    #upper = np.subtract(np.sqrt(np.divide(np.ma.max(mc, axis = 1),math.pi)), r)
+    #upper = np.ma.max(mc, axis = 1)
     #lower = np.subtract(np.sqrt(np.divide(np.ma.min(mc, axis = 1),math.pi)), r)
     #middle = np.subtract(np.sqrt(np.divide(np.ma.mean(mc, axis = 1),math.pi)), r)
     K_dt = Kest(data=data, radii_time=r_time, radii_space=r_space)
-    
+    #K_dt2 = Kest(data=data2, radii_time=r_time, radii_space=r_space)
     #check for significant nonrandomness
     #clustered = data[np.where(data>upper)]
     #r_clus = r[np.where(data>upper)]
@@ -73,9 +72,11 @@ def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'):
     
     #plot data
     print(K_dt)
-    ax.plot_surface(r_time, r_space, K_dt,cmap=cm.coolwarm,
-                       linewidth=0, antialiased=False)
-
+    X, Y = np.meshgrid(r_time, r_space)
+    ax.plot_surface(X,Y,K_dt,cmap=cm.coolwarm)
+    #ax.plot_surface(X,Y,K_dt2,cmap=cm.coolwarm)
+    #im = ax.matshow(K_dt)
+    #fig.colorbar(im)
     #plot non random k values, flag if they exist
     cluster_flag = 0
     regular_flag = 0
