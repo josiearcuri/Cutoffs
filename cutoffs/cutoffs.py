@@ -27,22 +27,22 @@ def plot_cutoff_distributions(cuts, year, filepath):
     
     plt.savefig(filepath+str(year) + "yrs_timevsspace.jpg")    
 
-def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'): 
+def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1, mode = ' modeled'): 
     #load estimator
-    Kest = RipleysKEstimator_spacetime(t_max=year, d_max=100, t_min=0, d_min=0)
+    Kest = RipleysKEstimator_spacetime(t_max=year, d_max=d_max, t_min=0, d_min=0)
     #load sample
     data = cutoffs[['downstream_distance', 'time']].to_numpy() 
-    data[:,0] = data[:,0].copy()*100
+    data[:,0] = data[:,0]*d_max
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
-    r_time = np.linspace(1, 50, 10)
-    r_space = np.linspace(1,100, 10)
+    r_time = np.linspace(1, 50, spacing)
+    r_space = np.linspace(.000001,50, spacing)
     mc_dt = np.zeros((len(r_space),len(r_time), nit))
     mc_d = np.zeros((len(r_space), nit))
     mc_t = np.zeros((len(r_time), nit))
     z = np.zeros((num_samples, 2))
     for i in range(nit):
-        z[:,0] = np.random.random(size = num_samples)*100
+        z[:,0] = np.random.random(size = num_samples)*d_max
         z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
         k_dt, k_d, k_t = Kest(data=z, dist_time=r_time, dist_space=r_space) 
         mc_dt[:,:,i] =  k_dt
