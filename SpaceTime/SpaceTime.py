@@ -1,82 +1,21 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from scipy.spatial.distance import pdist
 
 
 __all__ = ['RipleysKEstimator_spacetime']
 
 
 class RipleysKEstimator_spacetime:
-    def __init__(self,t_max=None, d_max=None, t_min=None, d_min=None):
+    def __init__(self,t_max, d_max, t_min, d_min):
         self.area = (t_max-t_min)*(d_max-d_min)
         self.t_max = t_max
         self.d_max = d_max
         self.t_min = t_min
         self.d_min = d_min
 
-    @property
-    def area(self):
-        return self._area
-
-    @area.setter
-    def area(self, value):
-        if isinstance(value, (float, int)) and value > 0:
-            self._area = value
-        else:
-            raise ValueError('area is expected to be a positive number. '
-                             'Got {}.'.format(value))
-
-    @property
-    def d_max(self):
-        return self._d_max
-
-    @d_max.setter
-    def d_max(self, value):
-        if value is None or isinstance(value, (float, int)):
-            self._y_max = value
-        else:
-            raise ValueError('d_max is expected to be a real number '
-                             'or None. Got {}.'.format(value))
-
-    @property
-    def t_max(self):
-        return self._t_max
-
-    @t_max.setter
-    def t_max(self, value):
-        if value is None or isinstance(value, (float, int)):
-            self._t_max = value
-        else:
-            raise ValueError('t_max is expected to be a real number '
-                             'or None. Got {}.'.format(value))
-
-    @property
-    def d_min(self):
-        return self._d_min
-
-    @d_min.setter
-    def d_min(self, value):
-        if value is None or isinstance(value, (float, int)):
-            self._d_min = value
-        else:
-            raise ValueError('d_min is expected to be a real number. '
-                             'Got {}.'.format(value))
-
-    @property
-    def t_min(self):
-        return self._d_min
-
-    @t_min.setter
-    def t_min(self, value):
-        if value is None or isinstance(value, (float, int)):
-            self._t_min = value
-        else:
-            raise ValueError('t_min is expected to be a real number. '
-                             'Got {}.'.format(value))
-
-    def __call__(self, data, radii_space, radii_time):
-        return self.evaluate(data=data, radii_space=radii_space,radii_time = radii_time)
+    def __call__(self, data, dist_space, dist_time):
+        return self.evaluate(data=data, dist_space=dist_space,dist_time = dist_time)
     
     def _pairwise_diffs(self, data):
         npts = len(data)
@@ -89,8 +28,9 @@ class RipleysKEstimator_spacetime:
         
         plt.show()
         return diff
+
     
-    def evaluate(self, data, radii_space, radii_time):
+    def evaluate(self, data, dist_space, dist_time):
         data = np.asarray(data)
 
         if not data.shape[1] == 2:
@@ -99,27 +39,23 @@ class RipleysKEstimator_spacetime:
 
         npts = len(data)
         intensity = npts/self.area
-        intensity_space = npts
-        intensity_time = npts/self.area
-        ripley = np.zeros((len(radii_time), len(radii_space)))
-        k_d = np.zeros(len(radii_space))
-        k_t = np.zeros(len(radii_time))
+        intensity_space = npts/self.d_max
+        intensity_time = npts/self.t_max
+        ripley = np.zeros((len(dist_time), len(dist_space)))
+        k_d = np.zeros(len(dist_space))
+        k_t = np.zeros(len(dist_time))
         deltaspace = self._pairwise_diffs(data[:,0])
         deltatime = self._pairwise_diffs(data[:,1])
-  
-        for d in range(len(radii_space)):
-            idx_space = (deltaspace < radii_space[d])
-            k_d[d] = (np.count_nonzero(idx_space)*radii_space[d])/(npts)
-            for t in range(len(radii_time)):
-                idx_time = (deltatime < radii_time[t])
+ 
+        for d in range(len(dist_space)):
+            idx_space = (deltaspace < dist_space[d])
+            k_d[d] = (2*np.count_nonzero(idx_space)/(intensity_space*(npts-1)))
+            for t in range(len(dist_time)):
+                idx_time = (deltatime < dist_time[t])
+                k_t[t] = (2*np.count_nonzero(idx_time)/(intensity_time*(npts-1)))
+    
+                ripley[t,d]  = (np.count_nonzero(idx_time==idx_space)/(intensity*(npts-1)))
                 
-                k_t[t] = (np.count_nonzero(idx_time)*radii_time[t])/(npts)
-                
-                ripley[t,d]  = (np.count_nonzero(idx_time==idx_space)*radii_space[d]*radii_time[t])/(npts)
-        plt.plot(radii_space, (k_d/intensity_space)- radii_space)
-        plt.show()
-        plt.plot(radii_time,(k_t/intensity_time) - radii_time)
-        plt.show()
-        return (ripley/intensity- (radii_space*radii_time)) 
+        return (ripley, k_d/2 - dist_space, k_t/2-dist_time) 
                 
             

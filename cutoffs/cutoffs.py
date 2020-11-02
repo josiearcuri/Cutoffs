@@ -29,52 +29,88 @@ def plot_cutoff_distributions(cuts, year, filepath):
 
 def mc_envelope(cutoffs, year, resultdir, nit = 99, mode = ' modeled'): 
     #load estimator
-    Kest = RipleysKEstimator_spacetime(t_max=year, d_max=1, t_min=0, d_min=0)
+    Kest = RipleysKEstimator_spacetime(t_max=year, d_max=100, t_min=0, d_min=0)
     #load sample
     data = cutoffs[['downstream_distance', 'time']].to_numpy() 
-    
+    data[:,0] = data[:,0].copy()*100
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
-    r_time = np.linspace(1, 50, 50)
-    r_space = np.linspace(1/100,.5, 50)
-    #mc = np.zeros((len(r), nit))
+    r_time = np.linspace(1, 50, 10)
+    r_space = np.linspace(1,100, 10)
+    mc_dt = np.zeros((len(r_space),len(r_time), nit))
+    mc_d = np.zeros((len(r_space), nit))
+    mc_t = np.zeros((len(r_time), nit))
     z = np.zeros((num_samples, 2))
-    #for i in range(nit):
-     #   z[:,0] = np.random.random(size = num_samples)
-    #    z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
-    #    mc[:,:,i] = Kest(data=z, radii_time=r_time, radii_space=r_space)
+    for i in range(nit):
+        z[:,0] = np.random.random(size = num_samples)*100
+        z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
+        k_dt, k_d, k_t = Kest(data=z, dist_time=r_time, dist_space=r_space) 
+        mc_dt[:,:,i] =  k_dt
+        mc_d[:,i] = k_d
+        mc_t[:,i] =k_t
+    print("Monte Carlo Simulation Complete")
 
-    data2 = np.zeros((num_samples,2)) 
+    #data2 = np.zeros((num_samples,2)) 
     ###check if normal distribution shows up as clustered 
-    data2[:,1] = np.random.random(size = num_samples)
-    data2[:,0] = np.random.normal(size = num_samples)*year
+    #data2[:,0] = np.random.random(size = num_samples)
+    #data2[:,1] = np.random.normal(size = num_samples)*year
     #plt.plot(data2[:,0], data2[:,1])
     #plt.show()
     # compute bounds of CSR envelope, transform y values for plotting
-    #upper = np.ma.max(mc, axis = 1)
-    #lower = np.subtract(np.sqrt(np.divide(np.ma.min(mc, axis = 1),math.pi)), r)
-    #middle = np.subtract(np.sqrt(np.divide(np.ma.mean(mc, axis = 1),math.pi)), r)
-    K_dt = Kest(data=data, radii_time=r_time, radii_space=r_space)
-    #K_dt2 = Kest(data=data2, radii_time=r_time, radii_space=r_space)
+    upper_dt = np.ma.max(mc_dt, axis = 2)
+    upper_d = np.ma.max(mc_d, axis = 1)
+    upper_t = np.ma.max(mc_t, axis = 1)
+    lower_dt = np.ma.min(mc_dt, axis = 2)
+    lower_d = np.ma.min(mc_d, axis = 1)
+    lower_t = np.ma.min(mc_t, axis = 1)
+    middle_dt = np.ma.mean(mc_dt, axis = 2)
+    middle_d = np.ma.mean(mc_d, axis = 1)
+    middle_t = np.ma.mean(mc_t, axis = 1)
+    
+    
+    K_dt, K_d, K_t = Kest(data=data, dist_time=r_time, dist_space=r_space)
+   
     #check for significant nonrandomness
-    #clustered = data[np.where(data>upper)]
-    #r_clus = r[np.where(data>upper)]
-    #regular = data[np.where(data<lower)]
-    #r_reg = r[np.where(data<lower)]
-    
+   # clustered = K_dt[np.where(K_dt>upper)]
+    #r_clus_ = r[np.where(K_dt>upper)]
+    #regular = K_dt[np.where(K_dt<lower)]
+    #r_reg = r[np.where(K_dt<lower)]
     fig = plt.figure()
-    
-    ax = fig.gca(projection='3d')
+     #plot CSR envelope
+    plt.plot(r_space, upper_d, color='red', ls=':', label='_nolegend_')
+    plt.plot(r_space, lower_d, color='red', ls=':', label='_nolegend_')
+    plt.plot(r_space, middle_d, color='red', ls=':', label='CSR')
+    plt.plot(r_space, K_d, color = "black", label = 'spatial K')
+    plt.legend(loc = 'upper left')
+    plt.xlabel("d")
+    plt.ylabel("Ripley's K/2 - d")
+    plt.title("Homegrown 1D space Ripley's K")
+    plt.show()
+    fig2 = plt.figure()
+     #plot CSR envelope
+    plt.plot(r_time, upper_t, color='red', ls=':', label='_nolegend_')
+    plt.plot(r_time, lower_t, color='red', ls=':', label='_nolegend_')
+    plt.plot(r_time, middle_t, color='red', ls=':', label='CSR')
+    plt.plot(r_time, K_t, color = "black", label = 'temporal K')
+    plt.legend(loc = 'upper left')
+    plt.xlabel("t")
+    plt.ylabel("Ripley's K/2 - t")
+    plt.title("Homegrown 1D time Ripley's K")
+    plt.show()
+    fig3 = plt.figure()
+    ax = fig3.gca(projection='3d')
     #plot CSR envelope
     #plt.plot(r, upper, color='red', ls=':', label='_nolegend_')
     #plt.plot(r, lower, color='red', ls=':', label='_nolegend_')
     #plt.plot(r, middle, color='red', ls=':', label='CSR')
     
     #plot data
-    print(K_dt)
-    X, Y = np.meshgrid(r_time, r_space)
+  
+    X, Y = np.meshgrid(r_space, r_time)
     ax.plot_surface(X,Y,K_dt,cmap=cm.coolwarm)
-    #ax.plot_surface(X,Y,K_dt2,cmap=cm.coolwarm)
+    ax.plot_surface(X,Y,middle_dt, cmap=cm.coolwarm)
+    #ax.plot_surface(X,Y,lower_dt, cmap=cm.coolwarm)
+    #ax.plot_surface(X,Y,upper_dt, cmap=cm.coolwarm)
     #im = ax.matshow(K_dt)
     #fig.colorbar(im)
     #plot non random k values, flag if they exist
