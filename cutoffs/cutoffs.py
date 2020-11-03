@@ -27,7 +27,7 @@ def plot_cutoff_distributions(cuts, year, filepath):
     
     plt.savefig(filepath+str(year) + "yrs_timevsspace.jpg")    
 
-def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1, mode = ' modeled'): 
+def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode = ' modeled'): 
     #load estimator
     Kest = RipleysKEstimator_spacetime(t_max=year, d_max=d_max, t_min=0, d_min=0)
     #load sample
@@ -36,7 +36,8 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1, mode = ' 
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
     r_time = np.linspace(1, 50, spacing)
-    r_space = np.linspace(.000001,50, spacing)
+    r_space = np.linspace(1,d_max, spacing)
+    
     mc_dt = np.zeros((len(r_space),len(r_time), nit))
     mc_d = np.zeros((len(r_space), nit))
     mc_t = np.zeros((len(r_time), nit))
@@ -80,25 +81,25 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1, mode = ' 
     plt.plot(r_space, upper_d, color='red', ls=':', label='_nolegend_')
     plt.plot(r_space, lower_d, color='red', ls=':', label='_nolegend_')
     plt.plot(r_space, middle_d, color='red', ls=':', label='CSR')
-    plt.plot(r_space, K_d, color = "black", label = 'spatial K')
+    plt.plot(r_space, K_d, color = "black", label = str(num_samples)+ ' cutoffs')
     plt.legend(loc = 'upper left')
     plt.xlabel("d")
-    plt.ylabel("Ripley's K/2 - d")
-    plt.title("Homegrown 1D space Ripley's K")
+    plt.ylabel("Ripley's K - 2d")
+    plt.title("Homegrown 1D space Ripley's K with " + mode)
     plt.show()
     fig2 = plt.figure()
      #plot CSR envelope
     plt.plot(r_time, upper_t, color='red', ls=':', label='_nolegend_')
     plt.plot(r_time, lower_t, color='red', ls=':', label='_nolegend_')
     plt.plot(r_time, middle_t, color='red', ls=':', label='CSR')
-    plt.plot(r_time, K_t, color = "black", label = 'temporal K')
+    plt.plot(r_time, K_t, color = "black", label =str(num_samples)+ ' cutoffs')
     plt.legend(loc = 'upper left')
     plt.xlabel("t")
-    plt.ylabel("Ripley's K/2 - t")
-    plt.title("Homegrown 1D time Ripley's K")
+    plt.ylabel("Ripley's K - 2t")
+    plt.title("Homegrown 1D time Ripley's K with" + mode)
     plt.show()
-    fig3 = plt.figure()
-    ax = fig3.gca(projection='3d')
+    #fig3 = plt.figure()
+    #ax = fig3.gca(projection='3d')
     #plot CSR envelope
     #plt.plot(r, upper, color='red', ls=':', label='_nolegend_')
     #plt.plot(r, lower, color='red', ls=':', label='_nolegend_')
@@ -106,9 +107,9 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1, mode = ' 
     
     #plot data
   
-    X, Y = np.meshgrid(r_space, r_time)
-    ax.plot_surface(X,Y,K_dt,cmap=cm.coolwarm)
-    ax.plot_surface(X,Y,middle_dt, cmap=cm.coolwarm)
+    #X, Y = np.meshgrid(r_space, r_time)
+    #ax.plot_surface(X,Y,K_dt,cmap=cm.coolwarm)
+    #ax.plot_surface(X,Y,middle_dt, cmap=cm.inferno)
     #ax.plot_surface(X,Y,lower_dt, cmap=cm.coolwarm)
     #ax.plot_surface(X,Y,upper_dt, cmap=cm.coolwarm)
     #im = ax.matshow(K_dt)
@@ -124,9 +125,9 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1, mode = ' 
     #    plt.scatter(r_reg, regular, c='green', s=30, marker = '*', label='regularly spaced', alpha = .5)
     
     #plot specs
-    plt.title("Homegrown space time Ripley's K")
+    #plt.title("Homegrown space time Ripley's K")
     #plt.legend(loc = 'upper left')
     #plt.xlabel("search radius (years)")
     #plt.ylabel("sqrt(Ripley's K/pi) - r")
-    plt.show()
+    #plt.show()
     return cluster_flag, regular_flag
