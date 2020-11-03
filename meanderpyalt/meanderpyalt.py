@@ -5,14 +5,9 @@ from scipy.stats import norm
 import scipy.interpolate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
-#from scipy import ndimage
 import pandas as pd
-#from PIL import Image, ImageDraw
-#from skimage import measure
-#from skimage import morphology
 from matplotlib.colors import LinearSegmentedColormap
 import time, sys
-#import numba
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 
@@ -231,7 +226,6 @@ def migrate_one_step(x,y,z,W,kl,dt,k,Cf,D,pad,omega,gamma):
     curv = compute_curvature(x,y)
     dx, dy, dz, ds, s = compute_derivatives(x,y,z)
     curv = W*curv # dimensionless curvature
-    R0 = kl*curv  # simple linear relationship between curvature and nominal migration rate
     alpha = k*2*Cf/D # exponent for convolution function G
     R1 = compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0)
     # calculate new centerline coordinates:

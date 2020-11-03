@@ -26,7 +26,7 @@ def plot_cutoff_distributions(cuts, year, filepath):
     plt.xlabel("time (years)")
     plt.ylabel("relative distance downstream (m)")
     
-    plt.savefig(filepath+str(year) + "yrs_timevsspace.jpg")    
+    plt.savefig(filepath+str(year) + "yrs_timevsspace.jpg", dpi = 500)    
 
 def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode = ' modeled'): 
     """pull cutoff data from model output, test distribution for nonrandomness in space and time using 1D Ripley's K test with monte carlo simulations to test statistical significance against complete spatial randomness.  
@@ -51,7 +51,7 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
 
         mc_d[:,i] = k_d
         mc_t[:,i] =k_t
-    print("Monte Carlo Simulation Complete")
+    
 
     #data2 = np.zeros((num_samples,2)) 
     ###check if random distribution shows up as clustered 
@@ -60,18 +60,18 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     #plt.plot(data2[:,0], data2[:,1])
     #plt.show()
     # compute bounds of CSR envelope, transform y values for plotting
-    upper_dt = np.ma.max(mc_dt, axis = 2)
+
     upper_d = np.ma.max(mc_d, axis = 1)
     upper_t = np.ma.max(mc_t, axis = 1)
-    lower_dt = np.ma.min(mc_dt, axis = 2)
+ 
     lower_d = np.ma.min(mc_d, axis = 1)
     lower_t = np.ma.min(mc_t, axis = 1)
-    middle_dt = np.ma.mean(mc_dt, axis = 2)
+   
     middle_d = np.ma.mean(mc_d, axis = 1)
     middle_t = np.ma.mean(mc_t, axis = 1)
     
     
-    K_dt, K_d, K_t = Kest(data=data, dist_time=r_time, dist_space=r_space)
+    K_d, K_t = Kest(data=data, dist_time=r_time, dist_space=r_space)
 
     fig = plt.figure()
      #plot CSR envelope
@@ -83,7 +83,7 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     plt.xlabel("d in relative distance along centerline")
     plt.ylabel("Ripley's K - 2d")
     plt.title("Homegrown 1D space Ripley's K with " + mode)
-    plt.savefig(resultdir + str(year)+"yrs_Space_Ripley_"+mode)
+    plt.savefig(resultdir + str(year)+"yrs_Space_Ripley_"+mode+".jpg", dpi = 500)
     fig2 = plt.figure()
      #plot CSR envelope
     plt.plot(r_time, upper_t, color='red', ls=':', label='_nolegend_')
@@ -94,6 +94,6 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     plt.xlabel("t in years")
     plt.ylabel("Ripley's K - 2t")
     plt.title("Homegrown 1D time Ripley's K with " + mode)
-    plt.savefig(resultdir + str(year)+"yrs_Time_Ripley_"+mode)
+    plt.savefig(resultdir + str(year)+"yrs_Time_Ripley_"+mode+".jpg", dpi = 500)
 
     return 
