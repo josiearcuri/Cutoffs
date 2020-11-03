@@ -221,11 +221,12 @@ def resample_centerline(x,y,z,deltas):
 def nominal_rate(kl, ne):
     new_kl = kl*(1+ne)
     return new_kl
-def migrate_one_step(x,y,z,W,kl,dt,k,Cf,D,pad,omega,gamma):
+def migrate_one_step(x,y,z,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     ns=len(x)
     curv = compute_curvature(x,y)
     dx, dy, dz, ds, s = compute_derivatives(x,y,z)
     curv = W*curv # dimensionless curvature
+    R0 = klarray*curv
     alpha = k*2*Cf/D # exponent for convolution function G
     R1 = compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0)
     # calculate new centerline coordinates:
