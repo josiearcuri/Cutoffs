@@ -31,9 +31,7 @@ class RipleysKEstimator_spacetime:
             k += size
         
         return diff, d_xomega, d_yomega
-    def _variance(self, d, npts, omega):
-        variance = (4*omega/(npts*(npts-1)))*(d - (5*(d**2)/(4*omega))+((d-2)*(d**3)/(6*(omega**2))))
-        return variance
+
     def _edge_correction(self, diff, d_xomega, d_yomega):
 
         k_xy = 1+(diff>d_yomega)
@@ -50,14 +48,13 @@ class RipleysKEstimator_spacetime:
                              'number of observed points.')
 
         npts = len(data)
-        intensity_volume = npts/(self.area)
-        intensity_space = npts/(self.d_max - self.d_min)#*(self.d_max - self.d_min))
+        
+        intensity_space = npts/(self.d_max - self.d_min)
         intensity_time = npts/(self.t_max - self.t_min)
-        ripley = np.zeros((len(dist_space),len(dist_time)))
+        #ripley = np.zeros((len(dist_space),len(dist_time)))
         k_d = np.zeros(len(dist_space))
         k_t = np.zeros(len(dist_time))
-        var_space = np.zeros(len(dist_space))
-        var_time = np.zeros(len(dist_time))
+
         deltaspace, d_xomega, d_yomega = self._pairwise_diffs(data[:,0], (self.d_max - self.d_min))
         deltatime, t_xomega, t_yomega = self._pairwise_diffs(data[:,1], (self.t_max - self.t_min))
         d_weights = self._edge_correction(deltaspace, d_xomega, d_yomega) 
@@ -66,18 +63,16 @@ class RipleysKEstimator_spacetime:
     
         for d in range(len(dist_space)):
             d_indicator = (deltaspace < dist_space[d])
-            k_d[d] = (d_indicator*d_weights).sum()#((1/intersec_area_space)*d_indicator).sum()
-            var_space[d] = self._variance(dist_space[d], npts, (self.d_max-self.d_min))
+            k_d[d] = (d_indicator*d_weights).sum()
             for t in range(len(dist_time)):
                 t_indicator = (deltatime<dist_time[t])
-                var_time[t] = self._variance(dist_time[t], npts, (self.t_max-self.t_min))
-                k_t[t] = (t_indicator*t_weights).sum()#((1/intersec_area_time)*t_indicator).sum()
-                dt_indicator = (d_indicator == t_indicator)
-                ripley[d,t]  = (dt_indicator).sum()#((1/intersec_area)*dt_indicator).sum()
+                k_t[t] = (t_indicator*t_weights).sum()
+                #dt_indicator = (d_indicator == t_indicator)
+                #ripley[d,t]  = (dt_indicator*t_weights*d_weights).sum()
 
-        ripley = 2*self.area*ripley/(npts*(npts-1)) - (2*dist_time*dist_space)
-        k_t = (2*k_t/(intensity_time*(npts-1)))-(2*dist_time) #  
-        k_d = (2*k_d/(intensity_space*(npts-1)))-(2*dist_space)#       
-        return (ripley, k_d, k_t) 
+        #ripley = 2*self.area*ripley/(npts*(npts-1)) - (k_t*d_t)
+        k_t = (2*k_t/(intensity_time*(npts-1)))-(2*dist_time)   
+        k_d = (2*k_d/(intensity_space*(npts-1)))-(2*dist_space)       
+        return (k_d, k_t) 
                 
             

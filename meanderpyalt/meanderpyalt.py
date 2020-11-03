@@ -319,8 +319,7 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     gamma - constant in HK model
     R0 - nominal migration rate (dimensionless curvature * migration rate constant)"""
     R1 = np.zeros(ns) # preallocate adjusted channel migration rate
-    #if pad<.05*ns:
-        #pad = int(.05*ns)
+
     for i in range(pad,ns):
         si2 = np.hstack((np.array([0]),np.cumsum(ds[i-1::-1])))  # distance along centerline, backwards from current point 
         G = np.exp(-alpha*si2) # convolution vector

@@ -21,7 +21,11 @@ bump_scale = 1.5           #to multiple kl by, range between 1 and 3, set to 0 f
 Sl = 0.01                    # initial slope (matters more for submarine channels than rivers)
 pad= 20                     #depends on sample
 
-result_dir = "C:/Users/Josie/Desktop/" ##change this to wherevery you want to save your results
+mode = "nonlocal_effects"
+if bump_scale == 0:
+    mode = "curvature_only"
+
+result_dir = "sample_results/" ##change this to wherevery you want to save your results
 filelist = ['sample_data/Reach6CL1984.csv','sample_data/Reach6CL_widths1984.csv']
 
 #Simulate migration on real centerline, keeoing track of cutoff locationa nd times#
@@ -35,11 +39,13 @@ chb.migrate(nit,saved_ts,deltas,pad,crdist,Cf,kl,kv,dt,dens)
 
 chb.plot('strat',20,60)
 plt.title(str(int(nit*dt/(365*24*60*60.0)))+ " years at "+ str(kl*(365*24*60*60.0))+ "m/yr")
-plt.savefig(result_dir + "channelafter"+str(int(nit*dt/(365*24*60*60.0))) +"years.png")
+plt.savefig(result_dir +mode+ "channelafter"+str(int(nit*dt/(365*24*60*60.0))) +"years.png")
 
 ## Statistically Test Cutoff Distributions for Clustering ##
-cuts = co.cutoff_distributions(chb.cutoffs, int(nit*dt/(365*24*60*60.0)), result_dir)
+cuts = co.cutoff_distributions(chb.cutoffs, int(nit*dt/(365*24*60*60.0)), result_dir+mode)
 co.plot_cutoff_distributions(cuts, int(nit*dt/(365*24*60*60.0)), result_dir)
-co.mc_envelope(cuts, year=int(nit*dt/(365*24*60*60.0)), resultdir = result_dir, nit = 99, mode = ' modeled') 
+
+co.mc_envelope(cutoffs = cuts, year = int(nit*dt/(365*24*60*60.0)), spacing = 25, resultdir=resultdir,mode = mode)
+
 
 
