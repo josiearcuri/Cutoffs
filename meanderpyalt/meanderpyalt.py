@@ -319,7 +319,7 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
 
 #########Periodic Boundary#########################
     for i in range(0,pad):
-        pad_up = math.floor(ns/2)
+        pad_up = ns//2
         si2 = np.hstack((np.array([0]),np.cumsum(np.hstack((ds[i-1::-1], ds[ns::pad_up])))))  # distance along centerline, backwards from corresponding point on downstream boundary
         G = np.exp(-alpha*si2) # convolution vector for downstream boundary to wrap around 
         R1[i] = omega*R0[i] + gamma*np.sum(np.hstack((R0[i::-1], R0[ns::pad_up]))*G)/np.sum(G) # main equation, weighted sum of curvatures upstream from downstream boundary - periodic boundary condition
