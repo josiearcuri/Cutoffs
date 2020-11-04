@@ -16,8 +16,8 @@ kv =  1.0E-11              # vertical slope-dependent erosion rate constant (m/s
 dt = .5*365*24*60*60.0     # time step (s)
 dens = 100                  # density of water (kg/m3)
 saved_ts = 2               # which time steps will be saved every year
-decay_rate = dt/(10*(*365*24*60*60.0);   #ranges between 1/3 to 1/10, eventually this will not be a constant,
-bump_scale = 3           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
+decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, eventually this will not be a constant,
+bump_scale = 0           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
 Sl = 0.01                    # initial slope (matters more for submarine channels than rivers)
 pad= 20                     #depends on sample
 
@@ -45,7 +45,7 @@ plt.savefig(result_dir +mode+ "channelafter"+str(int(nit*dt/(365*24*60*60.0))) +
 cuts = co.cutoff_distributions(chb.cutoffs, int(nit*dt/(365*24*60*60.0)), result_dir)
 co.plot_cutoff_distributions(cuts, int(nit*dt/(365*24*60*60.0)), result_dir)
 
-co.mc_envelope(cutoffs = cuts, year = int(nit*dt/(365*24*60*60.0)), spacing = 25, resultdir=result_dir,mode = mode)
+co.mc_envelope(cutoffs = cuts, year = int(nit*dt/(365*24*60*60.0)), d_max = 1000, spacing = 25, resultdir=result_dir,mode = mode)
 
 
 

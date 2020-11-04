@@ -11,7 +11,9 @@ def cutoff_distributions(cutoffs, year, filepath):
     """
     distances = [i.dist for i in cutoffs]
     times = [i.time for i in cutoffs]
-    cuts = pd.DataFrame({'downstream_distance': distances, 'time': times})
+    x_location = [i.x for i in cutoffs]
+    y_location = [i.y for i in cutoffs]
+    cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'x': x_location, 'y': y_location})
     newcuts = cuts.to_csv(filepath+str(year)+"years_cutoff_distributions.csv", index_label = "Cutoff")
     return cuts
     
@@ -39,7 +41,7 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
     r_time = np.linspace(1, 50, spacing)
-    r_space = np.linspace(1,.1*d_max, spacing)
+    r_space = np.linspace(1,.01*d_max, spacing)
     
     mc_d = np.zeros((len(r_space), nit))
     mc_t = np.zeros((len(r_time), nit))
