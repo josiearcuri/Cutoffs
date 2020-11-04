@@ -146,10 +146,7 @@ class ChannelBelt:
         if len(end_time)>0:
             cot = cot[cot<=end_time]
             sclt = sclt[sclt<=end_time]
-        #if len(calibration_time)>0:
-         #   cot = cot[cot>=calibration_time]
-          #  sclt =sclt[cot[0]<=sclt]
-           # sclt = sclt[sclt>=calibration_time[0]]
+
         times = np.sort(np.hstack((cot,sclt)))
         times = np.unique(times)
         order = 0 # variable for ordering objects in plot
@@ -197,7 +194,7 @@ class ChannelBelt:
                         plt.fill(xm,ym,color=ob_cmap(i/float(len(times)-1)))
                     else:
                         order = order+1
-                        plt.fill(xm,ym,sns.xkcd_rgb["ocean blue"],edgecolor='k',linewidth=0.25,zorder=order)
+                        plt.fill(xm,ym,sns.xkcd_rgb["ocean blue"],edgecolor='k',linewidth=0.1,zorder=order)
         x1 = self.channels[len(sclt)-1].x
         y1 = self.channels[len(sclt)-1].y
         xm, ym = get_channel_banks(x1,y1,self.channels[len(sclt)-1].W)
@@ -322,12 +319,10 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
 
 #########Periodic Boundary#########################
     for i in range(0,pad):
-        buddy = (ns-pad)+i
-        si2 = np.hstack((np.array([0]),np.cumsum(ds[buddy-1::-1])))  # distance along centerline, backwards from corresponding point on downstream boundary
+        pad_up = math.floor(ns/2)
+        si2 = np.hstack((np.array([0]),np.cumsum(np.hstack((ds[i-1::-1], ds[ns::pad_up])))))  # distance along centerline, backwards from corresponding point on downstream boundary
         G = np.exp(-alpha*si2) # convolution vector for downstream boundary to wrap around 
-        R1[i] = omega*R0[i] + gamma*np.sum(R0[buddy::-1]*G)/np.sum(G) # main equation, weighted sum of curvatures upstream from downstream boundary - periodic boundary condition
-   
-    
+        R1[i] = omega*R0[i] + gamma*np.sum(np.hstack((R0[i::-1], R0[ns::pad_up]))*G)/np.sum(G) # main equation, weighted sum of curvatures upstream from downstream boundary - periodic boundary condition
     return R1
 
 def compute_derivatives(x,y,z):
@@ -469,7 +464,7 @@ def get_channel_banks(x,y,W):
     xm = np.hstack((x1,x2[::-1]))
     ym = np.hstack((y1,y2[::-1]))
     return xm, ym
-def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .001):
+def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .0001):
     #reshape array to fit new centerline
     ne_new = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
    
