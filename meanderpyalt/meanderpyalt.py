@@ -6,14 +6,9 @@ from scipy.stats import norm
 import scipy.interpolate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
-#from scipy import ndimage
 import pandas as pd
-#from PIL import Image, ImageDraw
-#from skimage import measure
-#from skimage import morphology
 from matplotlib.colors import LinearSegmentedColormap
 import time, sys
-#import numba
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 
@@ -227,12 +222,12 @@ def resample_centerline(x,y,z,deltas):
 def nominal_rate(kl, ne):
     new_kl = kl*(1+ne)
     return new_kl
-def migrate_one_step(x,y,z,W,kl,dt,k,Cf,D,pad,omega,gamma):
+def migrate_one_step(x,y,z,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     ns=len(x)
     curv = compute_curvature(x,y)
     dx, dy, dz, ds, s = compute_derivatives(x,y,z)
     curv = W*curv # dimensionless curvature
-    R0 = kl*curv  # simple linear relationship between curvature and nominal migration rate
+    R0 = klarray*curv
     alpha = k*2*Cf/D # exponent for convolution function G
     R1 = compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0)
     # calculate new centerline coordinates:
@@ -320,8 +315,7 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     gamma - constant in HK model
     R0 - nominal migration rate (dimensionless curvature * migration rate constant)"""
     R1 = np.zeros(ns) # preallocate adjusted channel migration rate
-    #if pad<.05*ns:
-        #pad = int(.05*ns)
+
     for i in range(pad,ns):
         si2 = np.hstack((np.array([0]),np.cumsum(ds[i-1::-1])))  # distance along centerline, backwards from current point 
         G = np.exp(-alpha*si2) # convolution vector

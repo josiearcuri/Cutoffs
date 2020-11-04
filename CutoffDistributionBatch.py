@@ -10,12 +10,17 @@ import os
 
 #set variables
 D = 10;                       
+<<<<<<< HEAD
 nit = 100                   # number of iterations, run for at least 5000 years to see clustering
+=======
+nit = 10000                   # number of iterations, run for at least 5000 years to see clustering
+>>>>>>> master
 Cf = 0.022                # dimensionless Chezy friction factor
 kl = 5/(365*24*60*60.0)   # migration rate constant (m/s)
 kv =  1.0E-11              # vertical slope-dependent erosion rate constant (m/s)
 dt = 365*24*60*60.0     # time step (s)
 dens = 100                  # density of water (kg/m3)
+<<<<<<< HEAD
 saved_ts = 1               # which time steps will be saved every year
 decay_rate = 1/10;         #ranges between 1/3 to 1/10, eventually this will not be a constant
 bump_scale = 2;           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
@@ -23,6 +28,15 @@ Sl = 0.01                    # initial slope (matters more for submarine channel
 pad= 20                     #depends on sample
 year = int(nit *dt/(365*24*60*60.0))
 result_dir = "C:/Users/Josie/Desktop/dump_nonlocaleffects_pad20/" ##change this to wherevery you want to save your results
+=======
+saved_ts = 2               # which time steps will be saved every year
+decay_rate = 1/10;         #ranges between 1/3 to 1/10, eventually this will not be a constant
+bump_scale = 3           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
+Sl = 0.01                    # initial slope (matters more for submarine channels than rivers)
+pad= 20                     #depends on sample
+
+result_dir = "sample_results/" ##change this to wherevery you want to save your results
+>>>>>>> master
 filelist = ['sample_data/Reach6CL1984.csv','sample_data/Reach6CL_widths1984.csv']
 
 #Simulate migration on real centerline, keeoing track of cutoff locationa nd times#
@@ -40,20 +54,15 @@ n_cuts_array = []
 for j in range(0,100):
     chb.migrate(nit,saved_ts,deltas,pad,crdist,Cf,kl,kv,dt,dens) 
 
-    if np.mod(j+1,10)==0:
+    if np.mod(j+1,20)==0:
         cuts = co.cutoff_distributions(chb.cutoffs, year*(j+1), result_dir)
         n_cuts_array.append(len(cuts.time))
-        co.plot_cutoff_distributions(cuts, (j+1)*year, result_dir)
-        cluster_flag, regular_flag = co.mc_envelope(cuts, year=(1+j)*year, resultdir = result_dir, nit = 200) 
+        co.plot_cutoff_distributions(cuts, (j+1)*year, result_dir) 
         years.append((j+1)*year)
-        clusters_array.append(cluster_flag)
-        regulars_array.append(regular_flag)
         chb.plot('strat',20,60)
         plt.title(str(year)+ " years at "+ str(kl*(365*24*60*60.0))+ "m/yr")
         plt.savefig(result_dir+str((j+1)*year) + "yrs.png")
 
-nonrandoms = pd.DataFrame({'years': years, 'n_cuts': n_cuts_array, 'clusters': clusters_array, 'regulars': regulars_array})
-nonrandoms.to_csv(result_dir+"batch_results.csv", index = False)
 batch_specs = pd.DataFrame({'nit': nit, 'background migration rate': kl*(365*24*60*60.0), 'dt': dt/(365*24*60*60.0), 'pad': pad, "cutoff critical distance": crdist, "decay rate":-decay_rate, "foreground migrations rate": kl*(365*24*60*60.0)*bump_scale}, index = [0])
 =======
 
