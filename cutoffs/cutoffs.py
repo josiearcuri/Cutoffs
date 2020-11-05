@@ -40,8 +40,8 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     data[:,0] = data[:,0]*d_max
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
-    r_time = np.linspace(1, 50, spacing)
-    r_space = np.linspace(1,.01*d_max, spacing)
+    r_time = np.linspace(0, 100+1, spacing)
+    r_space = np.linspace(0,.01*d_max+1, spacing)
     
     mc_d = np.zeros((len(r_space), nit))
     mc_t = np.zeros((len(r_time), nit))
