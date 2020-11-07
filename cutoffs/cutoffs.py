@@ -5,6 +5,8 @@ from matplotlib import cm
 from SpaceTime import RipleysKEstimator_spacetime
 import os
 import math
+import imageio
+import glob
 
 def cutoff_distributions(cutoffs, year, filepath):
     """pull cutoff data from channel belt object and export csv, return dataframe for plotting
@@ -30,7 +32,7 @@ def plot_cutoff_distributions(cuts, year, filepath):
     
     plt.savefig(filepath+str(year) + "yrs_timevsspace.jpg", dpi = 500)    
 
-def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode = ' modeled'): 
+def mc_envelope(cutoffs, year,resultdir, nit = 99, d_max = 1000, mode = ' modeled'): 
     """pull cutoff data from model output, test distribution for nonrandomness in space and time using 1D Ripley's K test with monte carlo simulations to test statistical significance against complete spatial randomness.  
     """
     #load estimator
@@ -40,15 +42,15 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     data[:,0] = data[:,0]*d_max
     #generate random distibutions in same space + time ranges as data
     num_samples = len(cutoffs.time)
-    r_time = np.linspace(0, 100+1, spacing)
-    r_space = np.linspace(0,.01*d_max+1, spacing)
+    r_time = np.linspace(0, math.floor(year**.5))
+    r_space = np.linspace(0,math.floor(d_max**.5)/100, 10)
     
     mc_d = np.zeros((len(r_space), nit))
     mc_t = np.zeros((len(r_time), nit))
     z = np.zeros((num_samples, 2))
     for i in range(nit):
         z[:,0] = np.random.random(size = num_samples)*d_max
-        z[:,1] = np.random.random(size = num_samples)*math.ceil(np.max(cutoffs.time))
+        z[:,1] = np.random.random(size = num_samples)*year
         k_d, k_t = Kest(data=z, dist_time=r_time, dist_space=r_space) 
 
         mc_d[:,i] = k_d
@@ -81,7 +83,7 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     plt.plot(r_space/d_max, lower_d, color='red', ls=':', label='_nolegend_')
     plt.plot(r_space/d_max, middle_d, color='red', ls=':', label='CSR')
     plt.plot(r_space/d_max, K_d, color = "black", label = str(num_samples)+ ' cutoffs')
-    plt.legend(loc = 'upper left')
+    plt.legend(loc = 'lower left')
     plt.xlabel("d in relative distance along centerline")
     plt.ylabel("Ripley's K - 2d")
     plt.title("Homegrown 1D space Ripley's K with " + mode)
@@ -92,10 +94,19 @@ def mc_envelope(cutoffs, year, spacing,resultdir, nit = 99, d_max = 1000, mode =
     plt.plot(r_time, lower_t, color='red', ls=':', label='_nolegend_')
     plt.plot(r_time, middle_t, color='red', ls=':', label='CSR')
     plt.plot(r_time, K_t, color = "black", label =str(num_samples)+ ' cutoffs')
-    plt.legend(loc = 'upper left')
+    plt.legend(loc = 'lower left')
     plt.xlabel("t in years")
     plt.ylabel("Ripley's K - 2t")
     plt.title("Homegrown 1D time Ripley's K with " + mode)
     plt.savefig(resultdir + str(year)+"yrs_Time_Ripley_"+mode+".jpg", dpi = 500)
 
-    return 
+    return
+def save_animations(source, name):
+    images = []
+    original_files=list(glob.glob(source))
+    original_files.sort(reverse=False)
+   
+    for file_ in original_files:
+        images.append(imageio.imread(file_))
+        imageio.mimsave(name, images, duration=1/5, subrectangles=True)
+    print(name)

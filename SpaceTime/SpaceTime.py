@@ -49,7 +49,7 @@ class RipleysKEstimator_spacetime:
 
         npts = len(data)
         
-        intensity_space = npts/(self.d_max - self.d_min)
+        intensity_space = npts/((self.d_max - self.d_min))#*(self.d_max - self.d_min))
         intensity_time = npts/(self.t_max - self.t_min)
         #ripley = np.zeros((len(dist_space),len(dist_time)))
         k_d = np.zeros(len(dist_space))
@@ -63,16 +63,16 @@ class RipleysKEstimator_spacetime:
     
         for d in range(len(dist_space)):
             d_indicator = (deltaspace < dist_space[d])
-            k_d[d] = (d_indicator*d_weights).sum()
+            k_d[d] = (d_indicator).sum()#*d_weights).sum()
             for t in range(len(dist_time)):
                 t_indicator = (deltatime<dist_time[t])
-                k_t[t] = (t_indicator*t_weights).sum()
+                k_t[t] = (t_indicator).sum()#*t_weights).sum()
                 #dt_indicator = (d_indicator == t_indicator)
                 #ripley[d,t]  = (dt_indicator*t_weights*d_weights).sum()
 
         #ripley = 2*self.area*ripley/(npts*(npts-1)) - (k_t*d_t)
-        k_t = (2*k_t/(intensity_time*(npts-1)))-(2*dist_time)   
-        k_d = (2*k_d/(intensity_space*(npts-1)))-(2*dist_space)       
-        return (k_d, k_t) 
+        k_t = (2*k_t/(intensity_time*(npts-1)))  
+        k_d = (2*k_d/(intensity_space*(npts-1)))      
+        return (k_d-(2*dist_space) , (k_t) -(2*dist_time) ) 
                 
             
