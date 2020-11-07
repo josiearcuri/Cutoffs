@@ -314,7 +314,7 @@ def load_initial_channel(filepath, W, D, Sl, deltas):
     deltaz = Sl * deltas*(len(x)-1)
     z = np.linspace(0,deltaz,len(x))[::-1]
     return Channel(x,y,z,W,D)
-def generate_channel_from_file(filelist, interp = "some", slope = .01, D_in= 10, smooth_factor=.25, matlab_corr= -1):
+def generate_channel_from_file(filelist, slope = .01, D_in= 10, smooth_factor=.25, matlab_corr= -1):
     """function for creating a MeanderPy Channel object from an externally-sourced centerline in .csv file format.
         inputs:
         filelist - filelist must be a list of filepaths.  thie first should be a csv containing x and y values for each point on a centerline.  The second should be the widths of each point along the centerline
@@ -341,32 +341,25 @@ def generate_channel_from_file(filelist, interp = "some", slope = .01, D_in= 10,
         x = x-min(x)
         
     #average over widths to get a reach-constant width scalar
-    if len(filelist)>1:
-        W = np.mean(varlist[1][:,0])*30
-    else:
-        W = 200;
+    W = np.mean(varlist[1][:,0])*30
+  
     ## water depth scalar#
     D = D_in  
     # Linear length along the line, add a zero for first point:
     points = np.vstack([x, y]).T
     distance = np.cumsum( np.sqrt(np.sum( np.diff(points, axis=0)**2, axis=1 )) )
     distance = np.insert(distance, 0, 0)
-    pointf_fitted = points
-    if interp != "none":
-        # Build a list of the spline function, one for each dimension:
-        splines = [InterpolatedUnivariateSpline(distance, coords) for coords in points.T]
 
-        # Compute the spline for the smoothed(sampled) distances:
-        points_fitted = np.vstack([spl(np.linspace(0, distance[-1],round(len(x)*smooth_factor))) for spl in splines])
+    # Build a list of the spline function, one for each dimension:
+    splines = [InterpolatedUnivariateSpline(distance, coords) for coords in points.T]
+
+    # Compute the spline for the smoothed(sampled) distances:
+    points_fitted = np.vstack([spl(np.linspace(0, distance[-1],round(len(x)*smooth_factor))) for spl in splines])
     
     ## z-dim array, interpolated with constant slope along points of centerline.  assumes centerline points are equidistantly placed along original centerline. 
-        z = np.interp(np.asarray(range(len(points_fitted[0]))), [1, len(points_fitted[0])], [(slope*distance[-1]), 0]) 
-        deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
-        return [Channel(points_fitted[0],points_fitted[1],z,W,D), x, y, z, distance[-1], deltas]
-    else:
-        z = np.interp(np.asarray(range(len(x))), [1, len(y)], [(slope*distance[-1]), 0]) 
-        deltas = round(distance[-1]/(len(x)-1)) 
-        return [Channel(x, y*matlab_corr, z, W, D), x, y, z, distance[-1], deltas]
+    z = np.interp(np.asarray(range(len(points_fitted[0]))), [1, len(points_fitted[0])], [(slope*distance[-1]), 0]) 
+    deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
+    return [Channel(points_fitted[0],points_fitted[1],z,W,D), x, y, z, distance[-1], deltas]
 @numba.jit(nopython=True) # use Numba to speed up the heaviest computation
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     """compute migration rate as weighted sum of upstream curvatures
@@ -555,7 +548,7 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .00
         #gaussian bump
         mu = s[-1]*cut_dist[k]
 
-        sigma = (cut_len[k]*1.19)/4 # want the whole bump within 1.19*cut_len
+        sigma = (cut_len[k]*1.19)/2 # want the whole bump within 1.19*cut_len
 
         y_bump = norm.pdf(s, mu, sigma)
         ne_new = ne_new + (scale*y_bump/np.max(y_bump))
