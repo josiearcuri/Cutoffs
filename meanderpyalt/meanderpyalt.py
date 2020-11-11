@@ -117,14 +117,17 @@ class ChannelBelt:
         omega = -1.0 # constant in curvature calculation (Howard and Knutson, 1984)
         gamma = 2.5 # from Ikeda et al., 1981 and Howard and Knutson, 1984
         ne = np.zeros_like(x)
+        ymax = self.bump_scale*kl*2
         for itn in range(nit): # main loop
             update_progress(itn/nit) 
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
-            klarray = nominal_rate(kl, ne) ## compute array of nominal migration rate in m/s
+            klarray = kl*(1+ne) ## compute array of nominal migration rate in m/s
+      
             x, y = migrate_one_step(x,y,z,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+            
             x,y,z,xc,yc,zc,cut_dist, cut_len = cut_off_cutoffs(x,y,z,s,crdist,deltas) # find and execute cutoffs
             x,y,z,dx,dy,dz,ds,s = resample_centerline(x,y,z,deltas) # resample centerline
-            slope = np.gradient(z)/ds
+            
             
             if len(xc)>0: # save cutoff data
                 self.cutoff_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
@@ -136,6 +139,16 @@ class ChannelBelt:
                 self.cl_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
                 channel = Channel(x,y,z,W,D) # create channel object
                 self.channels.append(channel)
+                #fig = plt.figure(figsize = [6.4, 2])
+                #plt.plot(range(len(klarray)), klarray, color = "black")
+                #plt.xlabel('centerline location')
+                #plt.ylabel('m')
+                #plt.ylim(0,ymax)
+                #plt.xlim(0, len(klarray))
+                #plt.title("Nominal Migration Rate")
+                #fname = "./NE_movie/effects/effects"+'%03d.png'%(itn)
+                #fig.savefig(fname, dpi = 200)
+                #plt.close(fig)
 
     def plot(self, plot_type, pb_age, ob_age, end_time, n_channels):
         """plot ChannelBelt object
@@ -200,7 +213,7 @@ class ChannelBelt:
                         plt.fill(xm,ym,color=ob_cmap(i/float(len(times)-1)))
                     if plot_type == 'strat':
                         order = order+1
-                        plt.fill(xm,ym,sns.xkcd_rgb["ocean blue"],edgecolor='k',linewidth=0.25,zorder=order)
+                        plt.fill(xm,ym,sns.xkcd_rgb["ocean blue"],edgecolor='k',linewidth=0.2,zorder=order)
                     if plot_type == 'age':
                         order += 1
                         plt.fill(xm,ym,sns.xkcd_rgb["sea blue"],edgecolor='k',linewidth=0.1,zorder=order)
@@ -211,10 +224,10 @@ class ChannelBelt:
         if plot_type == 'age':
             plt.fill(xm,ym,color=sns.xkcd_rgb["sea blue"],zorder=order,edgecolor='k',linewidth=0.1)
         else:
-            plt.fill(xm,ym,color=(16/255.0,73/255.0,90/255.0),zorder=order) #,edgecolor='k')
+            plt.fill(xm,ym,color=(16/255.0,73/255.0,90/255.0),zorder=order,edgecolor='k')
         plt.axis('equal')
-        plt.xlim(xmin,xmax)
-        plt.ylim(ymin,ymax)
+        plt.xlim(xmin+100,xmax+100)
+        plt.ylim(ymin+100, ymax+100 )
         return fig
     def create_movie(self, xmin, xmax, plot_type, filename, dirname, pb_age, ob_age, scale, times):
         """method for creating movie frames (PNG files) that capture the plan-view evolution of a channel belt through time
@@ -254,10 +267,18 @@ class ChannelBelt:
             #plt.plot([xmin+200, xmin+200+5000],[ymin+200, ymin+200], 'k', linewidth=2)
             #plt.text(xmin+200+2000, ymin+200+100, '5 km', fontsize=14)
             fname = dirname+filename+'%03d.png'%(i)
-            fig.savefig(fname, bbox_inches='tight', dpi = 1500)
+            fig.savefig(fname, bbox_inches='tight', dpi = 1000)
             plt.close()
 def resample_centerline(x,y,z,deltas):
     dx, dy, dz, ds, s = compute_derivatives(x,y,z) # compute derivatives
+    if np.isnan(s).sum() >0:
+        good_idx = np.isnan(s)==False
+        dx = dx[good_idx]
+        dy = dy[good_idx]
+        dz = dz[good_idx]
+        ds = ds[good_idx]
+        s = s[good_idx]
+        print("badegg")
     # resample centerline so that 'deltas' is roughly constant
     # [parametric spline representation of curve; note that there is *no* smoothing]
     tck, u = scipy.interpolate.splprep([x,y,z],s=0) 
@@ -269,6 +290,7 @@ def resample_centerline(x,y,z,deltas):
 
 def nominal_rate(kl, ne):
     new_kl = kl*(1+ne)
+
     return new_kl
 def migrate_one_step(x,y,z,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     ns=len(x)
@@ -342,7 +364,7 @@ def generate_channel_from_file(filelist, slope = .01, D_in= 10, smooth_factor=.2
         
     #average over widths to get a reach-constant width scalar
     W = np.mean(varlist[1][:,0])*30
-  
+    print(W)
     ## water depth scalar#
     D = D_in  
     # Linear length along the line, add a zero for first point:
@@ -524,7 +546,7 @@ def get_channel_banks(x,y,W):
     xm = np.hstack((x1,x2[::-1]))
     ym = np.hstack((y1,y2[::-1]))
     return xm, ym
-def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .0001):
+def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .15):
     #reshape array to fit new centerline
     ne_new = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
    
@@ -548,8 +570,9 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .00
         #gaussian bump
         mu = s[-1]*cut_dist[k]
 
-        sigma = (cut_len[k]*1.19)/2 # want the whole bump within 1.19*cut_len
+        sigma = (cut_len[k]*1.19) # want the whole bump within 1.19*cut_len
 
         y_bump = norm.pdf(s, mu, sigma)
-        ne_new = ne_new + (scale*y_bump/np.max(y_bump))
+        ne_new = ne_new + ((scale-1)*y_bump/np.max(y_bump))
+  
     return ne_new

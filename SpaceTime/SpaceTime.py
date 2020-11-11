@@ -63,16 +63,16 @@ class RipleysKEstimator_spacetime:
     
         for d in range(len(dist_space)):
             d_indicator = (deltaspace < dist_space[d])
-            k_d[d] = (d_indicator).sum()#*d_weights).sum()
+            k_d[d] = ((d_indicator)).sum()#*d_weights).sum()
             for t in range(len(dist_time)):
                 t_indicator = (deltatime<dist_time[t])
-                k_t[t] = (t_indicator).sum()#*t_weights).sum()
+                k_t[t] = ((t_indicator)).sum()#*t_weights).sum()
                 #dt_indicator = (d_indicator == t_indicator)
                 #ripley[d,t]  = (dt_indicator*t_weights*d_weights).sum()
 
         #ripley = 2*self.area*ripley/(npts*(npts-1)) - (k_t*d_t)
-        k_t = (2*k_t/(intensity_time*(npts-1)))  
-        k_d = (2*k_d/(intensity_space*(npts-1)))      
-        return (k_d-(2*dist_space) , (k_t) -(2*dist_time) ) 
+        k_t = (2*k_t/(intensity_time*(npts)))  
+        k_d = (2*k_d/(intensity_space*(npts)))      
+        return (k_d-(2*dist_space), k_t-(2*dist_time)) 
                 
             
