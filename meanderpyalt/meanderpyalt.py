@@ -139,15 +139,16 @@ class ChannelBelt:
                 self.cl_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
                 channel = Channel(x,y,z,W,D) # create channel object
                 self.channels.append(channel)
-                #fig = plt.figure(figsize = [6.4, 2])
-                #plt.plot(range(len(klarray)), klarray, color = "black")
-                #plt.xlabel('centerline location')
-                #plt.ylabel('m')
-                #plt.ylim(0,ymax)
+           # if len(xc)>0 or np.mod(itn+1, saved_ts)==0:
+            #    fig = plt.figure(figsize = [6.4, 2])
+             #   plt.plot(range(len(klarray)), klarray*(365*24*60*60.0), color = "black")
+              #  plt.xlabel('centerline location')
+               # plt.ylabel('nominal migration rate (m/yr)')
+                #plt.ylim(0,kl*(365*24*60*60.0)*self.bump_scale)
                 #plt.xlim(0, len(klarray))
-                #plt.title("Nominal Migration Rate")
-                #fname = "./NE_movie/effects/effects"+'%03d.png'%(itn)
-                #fig.savefig(fname, dpi = 200)
+                ###plt.title("time = "+str(itn))
+                #fname = "./sample_results/MethodVis/ne_movie/effects/"+'%03d.png'%(itn+1)
+                #fig.savefig(fname, dpi = 500)
                 #plt.close(fig)
 
     def plot(self, plot_type, pb_age, ob_age, end_time, n_channels):
@@ -167,7 +168,7 @@ class ChannelBelt:
         # set up min and max x and y coordinates of the plot:
         xmin = np.min(self.channels[0].x)
         xmax = np.max(self.channels[0].x)
-        ymax = 0
+        ymax = 1
         for i in range(len(self.channels)):
             ymax = max(ymax, np.max(np.abs(self.channels[i].y)))
         ymax = ymax+2*self.channels[0].W # add a bit of space on top and bottom
@@ -227,7 +228,7 @@ class ChannelBelt:
             plt.fill(xm,ym,color=(16/255.0,73/255.0,90/255.0),zorder=order,edgecolor='k')
         plt.axis('equal')
         plt.xlim(xmin+100,xmax+100)
-        plt.ylim(ymin+100, ymax+100 )
+        plt.ylim(ymin+100, ymax+100)
         return fig
     def create_movie(self, xmin, xmax, plot_type, filename, dirname, pb_age, ob_age, scale, times):
         """method for creating movie frames (PNG files) that capture the plan-view evolution of a channel belt through time
@@ -255,7 +256,7 @@ class ChannelBelt:
         ymax = ymax+2*channels[0].W # add a bit of space on top and bottom
         ymin = ymin-2*channels[0].W 
         for i in range(0,len(sclt)):
-            fig = self.plot(plot_type, pb_age, ob_age, sclt[i], len(channels))
+            fig = self.plot(plot_type, pb_age, ob_age, sclt[i], i+1)
             fig_height = scale*fig.get_figheight()
             fig_width = (xmax-xmin)*fig_height/(ymax-ymin)
             fig.set_figwidth(fig_width)
@@ -267,7 +268,7 @@ class ChannelBelt:
             #plt.plot([xmin+200, xmin+200+5000],[ymin+200, ymin+200], 'k', linewidth=2)
             #plt.text(xmin+200+2000, ymin+200+100, '5 km', fontsize=14)
             fname = dirname+filename+'%03d.png'%(i)
-            fig.savefig(fname, bbox_inches='tight', dpi = 1000)
+            fig.savefig(fname, dpi = 500)
             plt.close()
 def resample_centerline(x,y,z,deltas):
     dx, dy, dz, ds, s = compute_derivatives(x,y,z) # compute derivatives
@@ -546,7 +547,7 @@ def get_channel_banks(x,y,W):
     xm = np.hstack((x1,x2[::-1]))
     ym = np.hstack((y1,y2[::-1]))
     return xm, ym
-def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .15):
+def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .075):
     #reshape array to fit new centerline
     ne_new = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
    

@@ -103,14 +103,14 @@ def mc_envelope(cutoffs, year,resultdir, nit = 99, d_max = 1000, mode = ' modele
     plt.savefig(resultdir + str(year)+"yrs_Time_Ripley_"+mode+".jpg", dpi = 500)
 
     return
-def save_animations(source, name):
+def save_animations(source, name,sp,  filt):
     images = []
     original_files=list(glob.glob(source))
     original_files.sort(reverse=False)
-   
-    for file_ in original_files:
+    
+    for file_ in original_files[11:121:filt]:
         images.append(imageio.imread(file_))
-    imageio.mimsave(name, images, duration=1/5, subrectangles=True)
+    imageio.mimsave(name, images, duration=1/sp, subrectangles=True)
     print(name)
 def mc_envelope_comp(cutoffs_curv,cutoffs_ne, year,resultdir, nit = 99, d_max = 100): 
     """pull cutoff data from model output, test distribution for nonrandomness in space and time using 1D Ripley's K test with monte carlo simulations to test statistical significance against complete spatial randomness.  
