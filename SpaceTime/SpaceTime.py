@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 
 
-__all__ = ['RipleysKEstimator_spacetime']
+__all__ = ['RipleysKEstimator_spacetime', 'PreliminaryTesting']
 
 
 class RipleysKEstimator_spacetime:
@@ -75,4 +75,52 @@ class RipleysKEstimator_spacetime:
         k_d = (2*k_d/(intensity_space*(npts)))      
         return (k_d-(2*dist_space), k_t-(2*dist_time)) 
                 
-            
+class PreliminaryTesting:
+    def __init__(self,t_max, d_max, t_min, d_min):
+        self.t_max = t_max
+        self.d_max = d_max
+        self.t_min = t_min
+        self.d_min = d_min
+
+    def __call__(self, data, dist_space, dist_time):
+        return self.evaluate(data=data, dist_space=dist_space,dist_time = dist_time)
+    
+    def _pairwise_diffs(self, data, omega):
+        npts = len(data)
+        diff = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double)
+        k = 0
+        for i in range(npts - 1):
+            size = npts - i - 1
+            diff[k:k + size] = abs(data[i] - data[i+1:])
+            k += size
+        
+        return diff
+    
+    def evaluate(self, data, dist_space, dist_time):
+        data = np.asarray(data)
+
+        if not data.shape[1] == 2:
+            raise ValueError('data must be an n by 2 array, where n is the '
+                             'number of observed points.')
+
+        npts = len(data)
+        
+
+        k_d = np.zeros(len(dist_space))
+        k_t = np.zeros(len(dist_time))
+
+        deltaspace = self._pairwise_diffs(data[:,0], (self.d_max - self.d_min))
+        deltatime = self._pairwise_diffs(data[:,1], (self.t_max - self.t_min))
+        for i in range(len(dist_space)):
+            d_indicator = (deltaspace <=dist_space[i])
+            stat_d[i] = (d_indicator).sum()
+            t_indicator = (deltatime<=dist_time[i])
+            stat_t[i] = (t_indicator).sum()
+        
+        if test == "H":
+            stat_t = 2*stat_t/(npts*(npts-1))  
+            stat_d = 2*stat_d/(npts*(npts-1)) 
+        if test == "G":
+            stat_t = stat_t/(npts)  
+            stat_d = stat_d/(npts) 
+        return (stat_d, stat_t) 
