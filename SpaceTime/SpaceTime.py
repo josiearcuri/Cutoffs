@@ -13,7 +13,6 @@ class RipleysKEstimator_spacetime:
         self.d_max = d_max
         self.t_min = t_min
         self.d_min = d_min
-
     def __call__(self, data, dist_space, dist_time):
         return self.evaluate(data=data, dist_space=dist_space,dist_time = dist_time)
     
@@ -81,13 +80,15 @@ class PreliminaryTesting:
         self.d_max = d_max
         self.t_min = t_min
         self.d_min = d_min
+        
 
-    def __call__(self, data, dist_space, dist_time):
-        return self.evaluate(data=data, dist_space=dist_space,dist_time = dist_time)
+    def __call__(self, cutoffs, mode):
+        return self.mc_env(cutoffs = cutoffs, nit=99, mode = mode)
     
-    def _pairwise_diffs(self, data, omega):
+    def _pairwise_diffs(self, data):
         npts = len(data)
         diff = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double)
+        
         k = 0
         for i in range(npts - 1):
             size = npts - i - 1
@@ -95,8 +96,18 @@ class PreliminaryTesting:
             k += size
         
         return diff
+    def _near_neigh(self, data):
+        npts = len(data)
+        diff = np.zeros(shape=npts, dtype=np.double)
+        for i in range(npts):
+            others= np.hstack((data[i::-1], data[i+1:]))
+            mask = np.ones(len(data), dtype=bool)
+            mask[i] = False
+            others = others[mask]
+            diff[i] = np.min(abs(data[i] - others))
+        return diff
     
-    def evaluate(self, data, dist_space, dist_time):
+    def evaluate(self, data, dist_space, dist_time, mode):
         data = np.asarray(data)
 
         if not data.shape[1] == 2:
@@ -106,21 +117,82 @@ class PreliminaryTesting:
         npts = len(data)
         
 
-        k_d = np.zeros(len(dist_space))
-        k_t = np.zeros(len(dist_time))
+        stat_d = np.zeros(len(dist_space))
+        stat_t = np.zeros(len(dist_time))
 
-        deltaspace = self._pairwise_diffs(data[:,0], (self.d_max - self.d_min))
-        deltatime = self._pairwise_diffs(data[:,1], (self.t_max - self.t_min))
-        for i in range(len(dist_space)):
-            d_indicator = (deltaspace <=dist_space[i])
-            stat_d[i] = (d_indicator).sum()
-            t_indicator = (deltatime<=dist_time[i])
-            stat_t[i] = (t_indicator).sum()
-        
-        if test == "H":
+        if mode == "H":
+            deltaspace = self._pairwise_diffs(data[:,0])
+            deltatime = self._pairwise_diffs(data[:,1])
+            for i in range(len(dist_space)):
+                d_indicator = (deltaspace <=dist_space[i])
+                stat_d[i] = (d_indicator).sum()
+                t_indicator = (deltatime<=dist_time[i])
+                stat_t[i] = (t_indicator).sum()
             stat_t = 2*stat_t/(npts*(npts-1))  
             stat_d = 2*stat_d/(npts*(npts-1)) 
-        if test == "G":
-            stat_t = stat_t/(npts)  
-            stat_d = stat_d/(npts) 
+        if mode == "G":
+            deltaspace = self._near_neigh(data[:,0])
+            deltatime = self._near_neigh(data[:,1])
+            for i in range(len(dist_space)):
+                d_indicator = (deltaspace <=dist_space[i])
+                stat_d[i] = (d_indicator).sum()
+                t_indicator = (deltatime<=dist_time[i])
+                stat_t[i] = (t_indicator).sum()
+           
+            stat_t = stat_t/(npts)
+            stat_d = stat_d/(npts)
         return (stat_d, stat_t) 
+    def mc_env(self,cutoffs, nit, mode): 
+            #generate random distibutions in same space + time ranges as data
+        rng = np.random.default_rng(seed = 42)
+        data = cutoffs[['downstream_distance', 'time']].to_numpy() 
+        num_samples = len(cutoffs.time)
+        r_time = np.linspace(0, 100, 20)
+        r_space = np.linspace(0,self.d_max//200, 20)
+        mc_d = np.zeros((len(r_space), nit))
+        mc_t = np.zeros((len(r_time), nit))
+        z = np.zeros((num_samples, 2))
+        for i in range(nit):
+            z[:,0] = rng.random(size = num_samples)*self.d_max
+            z[:,1] = rng.random(size = num_samples)*self.t_max
+            k_d, k_t = self.evaluate(data=z, dist_time=r_time, dist_space=r_space, mode=mode) 
+
+            mc_d[:,i] = k_d
+            mc_t[:,i] =k_t
+        upper_d = np.ma.max(mc_d, axis = 1)
+        upper_t = np.ma.max(mc_t, axis = 1)
+ 
+        lower_d = np.ma.min(mc_d, axis = 1)
+        lower_t = np.ma.min(mc_t, axis = 1)
+   
+        middle_d = np.ma.mean(mc_d, axis = 1)
+        middle_t = np.ma.mean(mc_t, axis = 1)
+    
+    
+        stat_d, stat_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
+        print(stat_d)
+        fig = plt.figure()
+     #plot CSR envelope
+        plt.plot(r_space/self.d_max, upper_d, color='red', ls=':', label='_nolegend_')
+        plt.plot(r_space/self.d_max, lower_d, color='red', ls=':', label='_nolegend_')
+        plt.plot(r_space/self.d_max, middle_d, color='red', ls=':', label='CSR')
+        plt.plot(r_space/self.d_max, stat_d, color = "black", label = str(num_samples)+ ' cutoffs')
+        plt.legend(loc = 'lower left')
+        plt.xlabel("d in relative distance along centerline")
+        plt.ylabel(mode)
+        plt.title("Homegrown 1D space EDF")
+        #plt.savefig(resultdir + str(year)+"yrs_Space_Ripley_"+mode+".jpg", dpi = 500)
+        plt.show()
+    
+        fig2 = plt.figure()
+     #plot CSR envelope
+        plt.plot(r_time, upper_t, color='red', ls=':', label='_nolegend_')
+        plt.plot(r_time, lower_t, color='red', ls=':', label='_nolegend_')
+        plt.plot(r_time, middle_t, color='red', ls=':', label='CSR')
+        plt.plot(r_time, stat_t, color = "black", label =str(num_samples)+ ' cutoffs')
+        plt.legend(loc = 'lower left')
+        plt.xlabel("t in years")
+        plt.ylabel(mode)
+        plt.title("Homegrown 1D time EDF")
+        plt.show()
+        
