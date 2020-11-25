@@ -119,7 +119,7 @@ class PreliminaryTesting:
 
         stat_d = np.zeros(len(dist_space))
         stat_t = np.zeros(len(dist_time))
-
+        stat_dt = np.zeros((len(dist_space), len(dist_time)))
         if mode == "H":
             deltaspace = self._pairwise_diffs(data[:,0])
             deltatime = self._pairwise_diffs(data[:,1])
@@ -152,16 +152,25 @@ class PreliminaryTesting:
             for i in range(len(dist_time)):
                 t_indicator = (deltatime<=dist_time[i])
                 stat_t[i] = (t_indicator).sum()
-            stat_t = (self.t_max*stat_t/((npts)*npts*(npts-1)))
-            stat_d = (self.d_max*stat_d/((npts)*npts*(npts-1))) 
-        return (stat_d, stat_t) 
+            stat_t = (self.t_max*stat_t/(npts*(npts-1)))
+            stat_d = (self.d_max*stat_d/((npts-1)*npts))
+        if mode == "K_st":
+            deltaspace = self._pairwise_diffs(data[:,0])
+            deltatime = self._pairwise_diffs(data[:,1])
+            for x in range(len(dist_space)):
+                d_indicator = (deltaspace <=dist_space[x])
+                for t in range(len(dist_time)):
+                    dt_indicator = (deltatime<=dist_time[t])&(deltaspace <=dist_space[x])
+                    stat_dt[x,t] = (dt_indicator).sum()
+            stat_dt = (self.d_max*self.t_max*stat_dt)/npts
+        return (stat_d-dist_space, stat_t-dist_time) 
     def mc_env(self,cutoffs, nit, mode): 
             #generate random distibutions in same space + time ranges as data
         rng = np.random.default_rng(seed = 42)
         data = cutoffs[['downstream_distance', 'time']].to_numpy() 
         num_samples = len(cutoffs.time)
-        r_time = np.linspace(1,int(np.sqrt(self.t_max)), 10)
-        r_space = np.linspace(1,int(np.sqrt(self.d_max)), 100)
+        r_time = np.linspace(1,100, 50)
+        r_space = np.linspace(100,10000, 100)
         mc_d = np.zeros((len(r_space), nit))
         mc_t = np.zeros((len(r_time), nit))
         z = np.zeros((num_samples, 2))
@@ -183,7 +192,7 @@ class PreliminaryTesting:
     
     
         stat_d, stat_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
-        
+            
         fig = plt.figure()
      #plot CSR envelope
         plt.plot(r_space, upper_d, color='red', ls=':', label='_nolegend_', linewidth = .5)
