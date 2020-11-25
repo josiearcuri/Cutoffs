@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import SpaceTime as st
 
-file = "C:/Users/Josie/Desktop/Cutoffs/sample_results/InitialChannel/OnlyCurvature/2000years_cutoff_distributions.csv"
+file = "C:/Users/Josie/Desktop/Cutoffs/sample_results/InitialChannel/OnlyCurvature_new/cl_nonlocaleffects_case3_100yrs.csv.csv"
 #file2 = "sample_results/5000years_cutoff_distributions.csv"
 cutoffs_curv = pd.read_csv(file, sep = ',')
 

@@ -511,7 +511,7 @@ def cut_off_cutoffs(x,y,z,s,crdist,deltas):
         zc.append(z[ind1[0]:ind2[0]+1]) # z coordinates of cutoff
         #########JOSIE ADDITIONS###############
         dx, dy, dz, ds, s_little = compute_derivatives(x[:ind1[0]+1],y[:ind1[0]+1],z[:ind1[0]+1])#compute derivatives upstream of cutoff
-        cl_dist.append(s_little[-1]/s[-1]) #cutoff distance downstream
+        cl_dist.append(s_little[-1]) #cutoff distance downstream
         #max_curv = np.max(compute_curvature(x[ind1[0]:ind2[0]+1],y[ind1[0]:ind2[0]+1]))  #maximum curvature along cutoff bend
         dx, dy, dz, ds, s_between = compute_derivatives(xc[-1],yc[-1],zc[-1])#compute derivatives along cutoff bend
         cut_len.append(s_between[-1]) #length removed by cutoff
@@ -558,8 +558,8 @@ def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .0
 
     for k in range(len(cut_dist)): #for each cutoff, add new NE
         #get distances of upstream and downstream extent to add NE
-        US = s[-1]*cut_dist[k] - cut_len[k]*1.19
-        DS = s[-1]*cut_dist[k] + cut_len[k]*1.19
+        US = cut_dist[k] - cut_len[k]*1.19
+        DS = cut_dist[k] + cut_len[k]*1.19
         if US<0:
             US = 0
         if DS>s[-1]:
@@ -569,9 +569,9 @@ def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .0
         idx_ds = np.where(s>=DS)[0][0]
 
         #gaussian bump
-        mu = s[-1]*cut_dist[k]
+        mu = cut_dist[k]
 
-        sigma = (cut_len[k]*1.19) # want the whole bump within 1.19*cut_len
+        sigma = (cut_len[k]*1.19)/2 # want the whole bump within 1.19*cut_len
 
         y_bump = norm.pdf(s, mu, sigma)
         ne_new = ne_new + ((scale-1)*y_bump/np.max(y_bump))

@@ -28,7 +28,7 @@ def plot_cutoff_distributions(cuts, year, filepath, mode):
     ncuts = len(cuts['time'])
     plt.title(str(ncuts)+" cutoffs with "+ mode)
     plt.xlabel("time (years)")
-    plt.ylabel("relative distance downstream")
+    plt.ylabel("distance downstream")
     
     plt.savefig(filepath+str(year) + mode+"_yrs_timevsspace.jpg", dpi = 500)    
 
@@ -100,7 +100,7 @@ def mc_envelope(cutoffs, year,resultdir, nit = 99, d_max = 1000, mode = ' modele
     plt.ylabel("Ripley's K - 2t")
     plt.title("Homegrown 1D time Ripley's K with " + mode)
     plt.show()
-    plt.savefig(resultdir + str(year)+"yrs_Time_Ripley_"+mode+".jpg", dpi = 500)
+    #plt.savefig(resultdir + str(year)+"yrs_Time_Ripley_"+mode+".jpg", dpi = 500)
 
     return
 def save_animations(source, name,sp,  filt):

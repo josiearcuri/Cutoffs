@@ -8,7 +8,7 @@ import pandas as pd
 #set variables
 D = 10;   
 deltas = 50;
-nit = 5000                   # number of iterations, run for at least 5000 years to see clustering
+nit = 100                   # number of iterations, run for at least 5000 years to see clustering
 Cf = 0.022                # dimensionless Chezy friction factor
 kl = 5/(365*24*60*60.0)   # migration rate constant (m/s)
 kv =  1.0E-11              # vertical slope-dependent erosion rate constant (m/s)
@@ -24,9 +24,9 @@ saved_ts = 10               # which time steps will be saved
 Sl = 0.0001 
 mode = "old"
 
-result_dir = "sample_results/InitialChannel/OnlyCurvature/" ##change this to wherevery you want to save your results
+result_dir = "sample_results/InitialChannel/OnlyCurvature_new/" ##change this to wherevery you want to save your results
 
-filepath = "C:/Users/Josie/Desktop/Cutoffs/sample_results/InitialChannel/OnlyCurvature_old/InitialCL_after2000yearsofonlycurvature.csv"
+filepath = "C:/Users/Josie/Desktop/Cutoffs/sample_results/InitialChannel/OnlyCurvature/cl_onlycurvature_6000yrs.csv"
 if mode == "new":
     ch = mp.generate_initial_channel(W,D,Sl,deltas,pad,100)
 else:
@@ -48,7 +48,7 @@ plt.show()
 xes = chb.channels[-1].x
 yes = chb.channels[-1].y
 cl = pd.DataFrame({'x': xes, 'y': yes});
-cl.to_csv(result_dir+"InitialCL_after5000yearsofonlycurvature.csv", header = False, index = False)
+cl.to_csv(result_dir+"InitialCL_after3000yearsofonlycurvature.csv", header = False, index = False)
 #chb.create_movie(np.min(ch.x), np.max(ch.x), "strat", "channel", "./NE_movie/channels/", 50, 50, 1, [chb.cl_times])#, chb.cutoff_times])
 #co.save_animations("./NE_movie/effects/*.png", "./NE_movie/Effectmovie.gif")
 #co.save_animations("./NE_movie/channels/*.png", "./NE_movie/Channelmovie.gif")
