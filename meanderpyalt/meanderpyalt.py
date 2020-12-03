@@ -69,7 +69,7 @@ class Cutoff:
         #print("cutoff at " + str(time))
 class ChannelBelt:
     """class for ChannelBelt objects"""
-    def __init__(self, channels, cutoffs, cl_times, cutoff_times, cutoff_dists, decay_rate, bump_scale):
+    def __init__(self, channels, cutoffs, cl_times, cutoff_times, cutoff_dists, decay_rate, bump_scale, cut_thresh):
         """initialize ChannelBelt object
         channels - list of Channel objects
         cutoffs - list of Cutoff objects
@@ -84,6 +84,7 @@ class ChannelBelt:
         self.cutoff_dists = cutoff_dists
         self.decay_rate = decay_rate
         self.bump_scale = bump_scale
+        self.cut_thresh = cut_thresh
 
     def migrate(self,nit,saved_ts,deltas,pad, crdist,Cf,kl,kv,dt,dens,D=[]):
         """function for computing migration rates along channel centerlines and moving the centerlines accordingly
@@ -134,6 +135,8 @@ class ChannelBelt:
                 self.cutoff_dists.append(cut_dist)
                 cutoff = Cutoff(xc,yc,zc,W,D,cut_dist,last_cl_time+(itn+1)*dt/(365*24*60*60.0)) # create cutoff object
                 self.cutoffs.append(cutoff)
+                if len(self.cutoff_dists)>= self.cut_thresh:
+                    return
             # saving centerlines:
             if np.mod(itn+1,saved_ts)==0:
                 self.cl_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
@@ -319,7 +322,9 @@ def generate_initial_channel(W,D,Sl,deltas,pad,n_bends):
     pad - padding (number of nodepoints along centerline)
     n_bends - approximate number of bends to be simulated"""
     noisy_len = n_bends*10*W/2.0 # length of noisy part of initial centerline
-    pad1 = int(pad/10.0) # padding at upstream end can be shorter than padding on downstream end
+    
+    pad1 = pad//10
+    #padding at upstream end can be shorter than padding on downstream end
     if pad1<5:
         pad1 = 5
     x = np.linspace(0, noisy_len+(pad+pad1)*deltas, int(noisy_len/deltas+pad+pad1)+1) # x coordinate
@@ -383,7 +388,7 @@ def generate_channel_from_file(filelist, slope = .01, D_in= 10, smooth_factor=.2
     z = np.interp(np.asarray(range(len(points_fitted[0]))), [1, len(points_fitted[0])], [(slope*distance[-1]), 0]) 
     deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
     return [Channel(points_fitted[0],points_fitted[1],z,W,D), x, y, z, distance[-1], deltas]
-@numba.jit(nopython=True) # use Numba to speed up the heaviest computation
+#@numba.jit(nopython=True) # use Numba to speed up the heaviest computation
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     """compute migration rate as weighted sum of upstream curvatures
     pad - padding (number of nodepoints along centerline)
@@ -393,19 +398,21 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     gamma - constant in HK model
     R0 - nominal migration rate (dimensionless curvature * migration rate constant)"""
     R1 = np.zeros(ns) # preallocate adjusted channel migration rate
-    pad1 = int(pad/10.0) # padding at upstream end can be shorter than padding on downstream end
-    if pad1<5:
-        pad1 = 5
-    for i in range(pad1,ns):
+    check = list(range(ns))
+    pad_up = ns-(pad)-1
+    #########Periodic Boundary#########################
+    for i in range(2,pad):
+        si2 = np.hstack((np.array([0]),np.cumsum(np.hstack((ds[i-1::-1], ds[ns-1:pad_up:-1])))))
+        G = np.exp(-alpha*si2) # convolution vector for downstream boundary to wrap around 
+        
+        R1[i] = omega*R0[i] + gamma*np.sum(np.hstack((R0[i::-1], R0[ns-1:pad_up:-1]))*G)/np.sum(G) # main equation, weighted sum of curvatures upstream from downstream boundary - periodic boundary condition
+    #####################################################
+    for i in range(pad,ns):
         si2 = np.hstack((np.array([0]),np.cumsum(ds[i-1::-1])))  # distance along centerline, backwards from current point 
         G = np.exp(-alpha*si2) # convolution vector
         R1[i] = omega*R0[i] + gamma*np.sum(R0[i::-1]*G)/np.sum(G) # main equation
-#########Periodic Boundary#########################
-    for i in range(0,pad):
-        pad_up = ns//2
-        si2 = np.hstack((np.array([0]),np.cumsum(np.hstack((ds[i-1::-1], ds[ns::pad_up])))))  # distance #along centerline, backwards from corresponding point on downstream boundary
-        G = np.exp(-alpha*si2) # convolution vector for downstream boundary to wrap around 
-        R1[i] = omega*R0[i] + gamma*np.sum(np.hstack((R0[i::-1], R0[ns::pad_up]))*G)/np.sum(G) # main equation, weighted sum of curvatures upstream from downstream boundary - periodic boundary condition
+
+
     return R1
 
 def compute_derivatives(x,y,z):
@@ -547,7 +554,7 @@ def get_channel_banks(x,y,W):
     xm = np.hstack((x1,x2[::-1]))
     ym = np.hstack((y1,y2[::-1]))
     return xm, ym
-def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .075):
+def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .05):
     #reshape array to fit new centerline
     ne_new = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
    

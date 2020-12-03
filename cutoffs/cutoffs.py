@@ -8,7 +8,7 @@ import math
 import imageio
 import glob
 
-def cutoff_distributions(cutoffs, year, filepath):
+def cutoff_distributions(cutoffs, year, filepath, mode):
     """pull cutoff data from channel belt object and export csv, return dataframe for plotting
     """
     distances = [i.dist for i in cutoffs]
@@ -16,7 +16,7 @@ def cutoff_distributions(cutoffs, year, filepath):
     x_location = [i.x for i in cutoffs]
     y_location = [i.y for i in cutoffs]
     cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'x': x_location, 'y': y_location})
-    newcuts = cuts.to_csv(filepath+str(year)+"years_cutoff_distributions.csv", index_label = "Cutoff")
+    newcuts = cuts.to_csv(filepath+mode+str(ncuts)+"_cutoffs_distribution.csv", index_label = "Cutoff")
     return cuts
     
 def plot_cutoff_distributions(cuts, year, filepath, mode):
@@ -30,7 +30,7 @@ def plot_cutoff_distributions(cuts, year, filepath, mode):
     plt.xlabel("time (years)")
     plt.ylabel("distance downstream")
     
-    plt.savefig(filepath+str(year) + mode+"_yrs_timevsspace.jpg", dpi = 500)    
+    plt.savefig(filepath + mode+str(ncuts)+"_cutoffs_timevsspace.jpg", dpi = 500)    
 
 def mc_envelope(cutoffs, year,resultdir, nit = 99, d_max = 1000, mode = ' modeled'): 
     """pull cutoff data from model output, test distribution for nonrandomness in space and time using 1D Ripley's K test with monte carlo simulations to test statistical significance against complete spatial randomness.  
