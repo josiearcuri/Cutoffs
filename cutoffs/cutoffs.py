@@ -16,7 +16,7 @@ def cutoff_distributions(cutoffs, year, filepath, mode):
     x_location = [i.x for i in cutoffs]
     y_location = [i.y for i in cutoffs]
     cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'x': x_location, 'y': y_location})
-    newcuts = cuts.to_csv(filepath+mode+str(ncuts)+"_cutoffs_distribution.csv", index_label = "Cutoff")
+    newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
     return cuts
     
 def plot_cutoff_distributions(cuts, year, filepath, mode):

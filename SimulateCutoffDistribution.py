@@ -9,7 +9,7 @@ import pandas as pd
 #set variables
 D = 10;   
 deltas = 50;
-nit = 2000              # number of iterations, run for at least 5000 years to see clustering
+nit = 3000              # number of iterations
 Cf = 0.022                # dimensionless Chezy friction factor
 kl = 5/(365*24*60*60.0)   # migration rate constant (m/s)
 kv =  1.0E-11              # vertical slope-dependent erosion rate constant (m/s)
@@ -17,15 +17,15 @@ dt = .5*365*24*60*60.0     # time step (s)
 dens = 100                  # density of water (kg/m3)# which time steps will be saved every year
 decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, eventually this will not be a constant,
 W = 150
-bump_scale = 4           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
+bump_scale = 0           #to multiple kl by, range between 1 and 3, set to 0 for no nonlocal effects
 pad= 100                     #depends on sample
-saved_ts = 200               # which time steps will be saved
+saved_ts = 500               # which time steps will be saved
                  # approximate number of bends you want to model
 Sl = 0.0001 
-cut_thresh = 100
-mode = "NonlocalEffects"
+cut_thresh = 200
+mode = "OnlyCurvature"
 
-result_dir = "C:/Users/Josie/Desktop/Cutoffs/sample_results/5mpyr/NonlocalEffects/" 
+result_dir = "C:/Users/Josie/Desktop/Cutoffs/sample_results/5mpyr/OnlyCurvature/" 
 ##change this to wherevery you want to save your 
 filepath ="sample_results/InitialChannel/InitialCL_5mpyr.csv"
 ch= mp.load_initial_channel(filepath, W, D, Sl, deltas)
