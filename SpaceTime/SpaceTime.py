@@ -3,8 +3,6 @@ import math
 import matplotlib.pyplot as plt
 import itertools as it
 
-__all__ = ['RipleysKEstimator_spacetime']
-
 class RipleysKEstimator_spacetime:
     def __init__(self,t_max, d_max, t_min, d_min, width):
         self.t_max = t_max
