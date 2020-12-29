@@ -11,9 +11,11 @@ functions to..
 * initiate meanderpy channel from existing centerline and widths
 * retrive cutoffs distributions though space and time from meanderpy simulations
 * analyze cutoff distrubutions as point process for clustering with Ripley's K function, compare to CSR process with monte carlo simulations
+## SpaceTime
+module for testing spatial point process for 1d nonrandomness, includes rudimentary edge corrections
 
 ## Dependencies
-Numpy, Scipy, Pandas, Astropy, Matplotlib, Seaborn
+Numpy, Scipy, Pandas,Matplotlib, Seaborn
 all included in environment file
 
 ## References

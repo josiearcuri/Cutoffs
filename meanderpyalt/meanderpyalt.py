@@ -10,6 +10,8 @@ from matplotlib.colors import LinearSegmentedColormap
 import time, sys
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+from matplotlib import cm
+import numba
 
 
 def update_progress(progress):
@@ -67,7 +69,7 @@ class Cutoff:
         #print("cutoff at " + str(time))
 class ChannelBelt:
     """class for ChannelBelt objects"""
-    def __init__(self, channels, cutoffs, cl_times, cutoff_times, cutoff_dists, decay_rate, bump_scale):
+    def __init__(self, channels, cutoffs, cl_times, cutoff_times, cutoff_dists, decay_rate, bump_scale, cut_thresh):
         """initialize ChannelBelt object
         channels - list of Channel objects
         cutoffs - list of Cutoff objects
@@ -82,6 +84,7 @@ class ChannelBelt:
         self.cutoff_dists = cutoff_dists
         self.decay_rate = decay_rate
         self.bump_scale = bump_scale
+        self.cut_thresh = cut_thresh
 
     def migrate(self,nit,saved_ts,deltas,pad, crdist,Cf,kl,kv,dt,dens,D=[]):
         """function for computing migration rates along channel centerlines and moving the centerlines accordingly
@@ -115,27 +118,43 @@ class ChannelBelt:
         omega = -1.0 # constant in curvature calculation (Howard and Knutson, 1984)
         gamma = 2.5 # from Ikeda et al., 1981 and Howard and Knutson, 1984
         ne = np.zeros_like(x)
+        ymax = self.bump_scale*kl*2
         for itn in range(nit): # main loop
             update_progress(itn/nit) 
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
-            klarray = nominal_rate(kl, ne) ## compute array of nominal migration rate in m/s
+            klarray = kl*(1+ne) ## compute array of nominal migration rate in m/s
+      
             x, y = migrate_one_step(x,y,z,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+            
             x,y,z,xc,yc,zc,cut_dist, cut_len = cut_off_cutoffs(x,y,z,s,crdist,deltas) # find and execute cutoffs
             x,y,z,dx,dy,dz,ds,s = resample_centerline(x,y,z,deltas) # resample centerline
-            slope = np.gradient(z)/ds
+            
             
             if len(xc)>0: # save cutoff data
                 self.cutoff_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
                 cutoff = Cutoff(xc,yc,zc,W,D,cut_dist,last_cl_time+(itn+1)*dt/(365*24*60*60.0)) # create cutoff object
                 self.cutoffs.append(cutoff)
+                if len(self.cutoff_dists)>= self.cut_thresh:
+                    return
             # saving centerlines:
             if np.mod(itn+1,saved_ts)==0:
                 self.cl_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
                 channel = Channel(x,y,z,W,D) # create channel object
                 self.channels.append(channel)
+           # if len(xc)>0 or np.mod(itn+1, saved_ts)==0:
+            #    fig = plt.figure(figsize = [6.4, 2])
+             #   plt.plot(range(len(klarray)), klarray*(365*24*60*60.0), color = "black")
+              #  plt.xlabel('centerline location')
+               # plt.ylabel('nominal migration rate (m/yr)')
+                #plt.ylim(0,kl*(365*24*60*60.0)*self.bump_scale)
+                #plt.xlim(0, len(klarray))
+                ###plt.title("time = "+str(itn))
+                #fname = "./sample_results/MethodVis/ne_movie/effects/"+'%03d.png'%(itn+1)
+                #fig.savefig(fname, dpi = 500)
+                #plt.close(fig)
 
-    def plot(self,plot_type,pb_age,ob_age,*end_time):
+    def plot(self, plot_type, pb_age, ob_age, end_time, n_channels):
         """plot ChannelBelt object
         plot_type - can be either 'strat' (for stratigraphic plot) or 'morph' (for morphologic plot)
         pb_age - age of point bars (in years) at which they get covered by vegetation
@@ -143,20 +162,16 @@ class ChannelBelt:
         end_time (optional) - age of last channel to be plotted (in years)"""
         cot = np.array(self.cutoff_times)
         sclt = np.array(self.cl_times)
-        if len(end_time)>0:
+        if end_time>0:
             cot = cot[cot<=end_time]
             sclt = sclt[sclt<=end_time]
-        #if len(calibration_time)>0:
-         #   cot = cot[cot>=calibration_time]
-          #  sclt =sclt[cot[0]<=sclt]
-           # sclt = sclt[sclt>=calibration_time[0]]
         times = np.sort(np.hstack((cot,sclt)))
         times = np.unique(times)
         order = 0 # variable for ordering objects in plot
         # set up min and max x and y coordinates of the plot:
         xmin = np.min(self.channels[0].x)
         xmax = np.max(self.channels[0].x)
-        ymax = 0
+        ymax = 1
         for i in range(len(self.channels)):
             ymax = max(ymax, np.max(np.abs(self.channels[i].y)))
         ymax = ymax+2*self.channels[0].W # add a bit of space on top and bottom
@@ -172,6 +187,8 @@ class ChannelBelt:
             pb_cmap = make_colormap([green,green,pb_crit,green,pb_color,1.0,pb_color]) # colormap for point bars
             ob_cmap = make_colormap([green,green,ob_crit,green,ob_color,1.0,ob_color]) # colormap for oxbows
             plt.fill([xmin,xmax,xmax,xmin],[ymin,ymin,ymax,ymax],color=(106/255.0,159/255.0,67/255.0))
+        if plot_type == 'age':
+            age_cmap = cm.get_cmap('magma',n_channels)
         for i in range(0,len(times)):
             if times[i] in sclt:
                 ind = np.where(sclt==times[i])[0][0]
@@ -184,9 +201,12 @@ class ChannelBelt:
                         plt.fill(xm,ym,facecolor=pb_cmap(i/float(len(times)-1)),edgecolor='k',linewidth=0.2)
                     else:
                         plt.fill(xm,ym,facecolor=pb_cmap(i/float(len(times)-1)))
-                else:
-                    order = order+1
+                if plot_type == 'strat':
+                    order += 1
                     plt.fill(xm,ym,sns.xkcd_rgb["light tan"],edgecolor='k',linewidth=0.25,zorder=order)
+                if plot_type == 'age':
+                    order += 1
+                    plt.fill(xm,ym,facecolor=age_cmap(i/float(n_channels-1)),edgecolor='k',linewidth=0.1,zorder=order)
             if times[i] in cot:
                 ind = np.where(cot==times[i])[0][0]
                 for j in range(0,len(self.cutoffs[ind].x)):
@@ -195,20 +215,74 @@ class ChannelBelt:
                     xm, ym = get_channel_banks(x1,y1,self.cutoffs[ind].W)
                     if plot_type == 'morph':
                         plt.fill(xm,ym,color=ob_cmap(i/float(len(times)-1)))
-                    else:
+                    if plot_type == 'strat':
                         order = order+1
-                        plt.fill(xm,ym,sns.xkcd_rgb["ocean blue"],edgecolor='k',linewidth=0.25,zorder=order)
+                        plt.fill(xm,ym,sns.xkcd_rgb["ocean blue"],edgecolor='k',linewidth=0.2,zorder=order)
+                    if plot_type == 'age':
+                        order += 1
+                        plt.fill(xm,ym,sns.xkcd_rgb["sea blue"],edgecolor='k',linewidth=0.1,zorder=order)
         x1 = self.channels[len(sclt)-1].x
         y1 = self.channels[len(sclt)-1].y
         xm, ym = get_channel_banks(x1,y1,self.channels[len(sclt)-1].W)
         order = order+1
-        plt.fill(xm,ym,color=(16/255.0,73/255.0,90/255.0),zorder=order,edgecolor='k')
+        if plot_type == 'age':
+            plt.fill(xm,ym,color=sns.xkcd_rgb["sea blue"],zorder=order,edgecolor='k',linewidth=0.1)
+        else:
+            plt.fill(xm,ym,color=(16/255.0,73/255.0,90/255.0),zorder=order,edgecolor='k')
         plt.axis('equal')
-
+        plt.xlim(xmin+100,xmax+100)
+        plt.ylim(ymin+100, ymax+100)
         return fig
-
+    def create_movie(self, xmin, xmax, plot_type, filename, dirname, pb_age, ob_age, scale, times):
+        """method for creating movie frames (PNG files) that capture the plan-view evolution of a channel belt through time
+        movie has to be assembled from the PNG file after this method is applied
+        xmin - value of x coodinate on the left side of frame
+        xmax - value of x coordinate on right side of frame
+        plot_type = - can be either 'strat' (for stratigraphic plot) or 'morph' (for morphologic plot)
+        filename - first few characters of the output filenames
+        dirname - name of directory where output files should be written
+        pb_age - age of point bars (in years) at which they get covered by vegetation (if the 'morph' option is used for 'plot_type')
+        ob_age - age of oxbow lakes (in years) at which they get covered by vegetation (if the 'morph' option is used for 'plot_type')
+        scale - scaling factor (e.g., 2) that determines how many times larger you want the frame to be, compared to the default scaling of the figure
+        end_time - time at which simulation should be stopped
+        n_channels - total number of channels + cutoffs for which simulation is run (usually it is len(chb.cutoffs) + len(chb.channels)). Used when plot_type = 'age'
+        """
+        #xmin = xmin - 5000
+        #xmax = xmax +5000
+        sclt = np.unique(np.hstack((times)))
+        channels = self.channels[:len(sclt)]
+        ymax = np.max(channels[0].y) + 5000
+        ymin = np.min(channels[0].y) - 5000
+        for i in range(0,len(channels)):
+            ymax = max(ymax, np.max(np.abs(channels[i].y)))
+            ymin = min(ymin, np.min(channels[i].y))
+        ymax = ymax+2*channels[0].W # add a bit of space on top and bottom
+        ymin = ymin-2*channels[0].W 
+        for i in range(0,len(sclt)):
+            fig = self.plot(plot_type, pb_age, ob_age, sclt[i], i+1)
+            fig_height = scale*fig.get_figheight()
+            fig_width = (xmax-xmin)*fig_height/(ymax-ymin)
+            fig.set_figwidth(fig_width)
+            fig.set_figheight(fig_height)
+            fig.gca().set_xlim(xmin,xmax)
+            fig.gca().set_ylim(ymin,ymax)
+            fig.gca().set_xticks([])
+            fig.gca().set_yticks([])
+            #plt.plot([xmin+200, xmin+200+5000],[ymin+200, ymin+200], 'k', linewidth=2)
+            #plt.text(xmin+200+2000, ymin+200+100, '5 km', fontsize=14)
+            fname = dirname+filename+'%03d.png'%(i)
+            fig.savefig(fname, dpi = 500)
+            plt.close()
 def resample_centerline(x,y,z,deltas):
     dx, dy, dz, ds, s = compute_derivatives(x,y,z) # compute derivatives
+    if np.isnan(s).sum() >0:
+        good_idx = np.isnan(s)==False
+        dx = dx[good_idx]
+        dy = dy[good_idx]
+        dz = dz[good_idx]
+        ds = ds[good_idx]
+        s = s[good_idx]
+        print("badegg")
     # resample centerline so that 'deltas' is roughly constant
     # [parametric spline representation of curve; note that there is *no* smoothing]
     tck, u = scipy.interpolate.splprep([x,y,z],s=0) 
@@ -220,6 +294,7 @@ def resample_centerline(x,y,z,deltas):
 
 def nominal_rate(kl, ne):
     new_kl = kl*(1+ne)
+
     return new_kl
 def migrate_one_step(x,y,z,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     ns=len(x)
@@ -247,7 +322,9 @@ def generate_initial_channel(W,D,Sl,deltas,pad,n_bends):
     pad - padding (number of nodepoints along centerline)
     n_bends - approximate number of bends to be simulated"""
     noisy_len = n_bends*10*W/2.0 # length of noisy part of initial centerline
-    pad1 = int(pad/10.0) # padding at upstream end can be shorter than padding on downstream end
+    
+    pad1 = pad//10
+    #padding at upstream end can be shorter than padding on downstream end
     if pad1<5:
         pad1 = 5
     x = np.linspace(0, noisy_len+(pad+pad1)*deltas, int(noisy_len/deltas+pad+pad1)+1) # x coordinate
@@ -257,7 +334,14 @@ def generate_initial_channel(W,D,Sl,deltas,pad,n_bends):
     z = np.linspace(0,deltaz,len(x))[::-1] # z coordinate
     return Channel(x,y,z,W,D)
 
-
+def load_initial_channel(filepath, W, D, Sl, deltas):
+  
+    df = pd.read_csv(filepath, sep = ',', header=None).values
+    x = df[:,0]
+    y = df[:,1]
+    deltaz = Sl * deltas*(len(x)-1)
+    z = np.linspace(0,deltaz,len(x))[::-1]
+    return Channel(x,y,z,W,D)
 def generate_channel_from_file(filelist, slope = .01, D_in= 10, smooth_factor=.25, matlab_corr= -1):
     """function for creating a MeanderPy Channel object from an externally-sourced centerline in .csv file format.
         inputs:
@@ -286,7 +370,7 @@ def generate_channel_from_file(filelist, slope = .01, D_in= 10, smooth_factor=.2
         
     #average over widths to get a reach-constant width scalar
     W = np.mean(varlist[1][:,0])*30
-  
+    print(W)
     ## water depth scalar#
     D = D_in  
     # Linear length along the line, add a zero for first point:
@@ -304,7 +388,7 @@ def generate_channel_from_file(filelist, slope = .01, D_in= 10, smooth_factor=.2
     z = np.interp(np.asarray(range(len(points_fitted[0]))), [1, len(points_fitted[0])], [(slope*distance[-1]), 0]) 
     deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
     return [Channel(points_fitted[0],points_fitted[1],z,W,D), x, y, z, distance[-1], deltas]
-
+#@numba.jit(nopython=True) # use Numba to speed up the heaviest computation
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     """compute migration rate as weighted sum of upstream curvatures
     pad - padding (number of nodepoints along centerline)
@@ -314,20 +398,21 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     gamma - constant in HK model
     R0 - nominal migration rate (dimensionless curvature * migration rate constant)"""
     R1 = np.zeros(ns) # preallocate adjusted channel migration rate
-
+    check = list(range(ns))
+    pad_up = ns-(pad)-1
+    #########Periodic Boundary#########################
+    for i in range(2,pad):
+        si2 = np.hstack((np.array([0]),np.cumsum(np.hstack((ds[i-1::-1], ds[ns-1:pad_up:-1])))))
+        G = np.exp(-alpha*si2) # convolution vector for downstream boundary to wrap around 
+        
+        R1[i] = omega*R0[i] + gamma*np.sum(np.hstack((R0[i::-1], R0[ns-1:pad_up:-1]))*G)/np.sum(G) # main equation, weighted sum of curvatures upstream from downstream boundary - periodic boundary condition
+    #####################################################
     for i in range(pad,ns):
         si2 = np.hstack((np.array([0]),np.cumsum(ds[i-1::-1])))  # distance along centerline, backwards from current point 
         G = np.exp(-alpha*si2) # convolution vector
         R1[i] = omega*R0[i] + gamma*np.sum(R0[i::-1]*G)/np.sum(G) # main equation
 
-#########Periodic Boundary#########################
-    for i in range(0,pad):
-        buddy = (ns-pad)+i
-        si2 = np.hstack((np.array([0]),np.cumsum(ds[buddy-1::-1])))  # distance along centerline, backwards from corresponding point on downstream boundary
-        G = np.exp(-alpha*si2) # convolution vector for downstream boundary to wrap around 
-        R1[i] = omega*R0[i] + gamma*np.sum(R0[buddy::-1]*G)/np.sum(G) # main equation, weighted sum of curvatures upstream from downstream boundary - periodic boundary condition
-   
-    
+
     return R1
 
 def compute_derivatives(x,y,z):
@@ -433,7 +518,7 @@ def cut_off_cutoffs(x,y,z,s,crdist,deltas):
         zc.append(z[ind1[0]:ind2[0]+1]) # z coordinates of cutoff
         #########JOSIE ADDITIONS###############
         dx, dy, dz, ds, s_little = compute_derivatives(x[:ind1[0]+1],y[:ind1[0]+1],z[:ind1[0]+1])#compute derivatives upstream of cutoff
-        cl_dist.append(s_little[-1]/s[-1]) #cutoff distance downstream
+        cl_dist.append(s_little[-1]) #cutoff distance downstream
         #max_curv = np.max(compute_curvature(x[ind1[0]:ind2[0]+1],y[ind1[0]:ind2[0]+1]))  #maximum curvature along cutoff bend
         dx, dy, dz, ds, s_between = compute_derivatives(xc[-1],yc[-1],zc[-1])#compute derivatives along cutoff bend
         cut_len.append(s_between[-1]) #length removed by cutoff
@@ -469,7 +554,7 @@ def get_channel_banks(x,y,W):
     xm = np.hstack((x1,x2[::-1]))
     ym = np.hstack((y1,y2[::-1]))
     return xm, ym
-def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .001):
+def update_nonlocal_effects(ne, s,  decay, scale, cut_dist, cut_len, thresh = .05):
     #reshape array to fit new centerline
     ne_new = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
    
@@ -480,8 +565,8 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .00
 
     for k in range(len(cut_dist)): #for each cutoff, add new NE
         #get distances of upstream and downstream extent to add NE
-        US = s[-1]*cut_dist[k] - cut_len[k]*1.19
-        DS = s[-1]*cut_dist[k] + cut_len[k]*1.19
+        US = cut_dist[k] - cut_len[k]*1.19
+        DS = cut_dist[k] + cut_len[k]*1.19
         if US<0:
             US = 0
         if DS>s[-1]:
@@ -491,10 +576,11 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .00
         idx_ds = np.where(s>=DS)[0][0]
 
         #gaussian bump
-        mu = s[-1]*cut_dist[k]
+        mu = cut_dist[k]
 
-        sigma = (cut_len[k]*1.19)/4 # want the whole bump within 1.19*cut_len
+        sigma = (cut_len[k]*1.19)/2 # want the whole bump within 1.19*cut_len
 
         y_bump = norm.pdf(s, mu, sigma)
-        ne_new = ne_new + (scale*y_bump/np.max(y_bump))
+        ne_new = ne_new + ((scale-1)*y_bump/np.max(y_bump))
+  
     return ne_new
