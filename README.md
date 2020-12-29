@@ -1,18 +1,13 @@
 # Cutoffs
-
 A library for integrating real centerlines with MeanderPy, simulating migration that includes nonlocal effects from cutoffs, and analyzing resulting cutoff distributions. 
 
 
-## meanderpyalt
-This module builds upon MeanderPy[1], a centerline migration model based on local and weigthed upstream curvatures[2].   
-This is an alternative version of meanderpy which encorporates nonlocal effects from cutoffs into centerline migration.  After a cutoff occurs, a gaussian bump is introduced to the location on the centerline where that cutoff occured. the amplitude of this bump is set by the user, as is its decay rate.  Both of these are constants for now.  The length upstream and downstream that this bump extends is equal to 1.19* the length removed by that cutoff [3].
-## cutoffs
-functions to..
-* initiate meanderpy channel from existing centerline and widths
-* retrive cutoffs distributions though space and time from meanderpy simulations
-* analyze cutoff distrubutions as point process for clustering with Ripley's K function, compare to CSR process with monte carlo simulations
+## HKplus
+This module builds upon previous implementations of Howard and Knutson's centerline migration model based on local and weigthed upstream curvatures[1,2].   
+This version considers additions to migration rate from cutoff events' hydraulic effects when calculating centerline migration.  After a cutoff occurs, a gaussian bump is introduced to migration rate in the location on the centerline where that cutoff occured, before upstream curvature is accounted for by HK's model. The dimensions and decay of each bump is set accordance with ours and others' findings from remote sensing analyses[3], but can easily be adjusted.
+
 ## SpaceTime
-module for testing spatial point process for 1d nonrandomness, includes rudimentary edge corrections
+ A set of functions used to test cutoff distributions collected by HKplus iterations for spatiotemporal clustering.  This includes a monte carlo sampling method to test cutoff distibutions against randomly-generated and therefore homogenous and independent point processes[4].   
 
 ## Dependencies
 Numpy, Scipy, Pandas,Matplotlib, Seaborn
@@ -23,4 +18,5 @@ all included in environment file
 [2]Zoltán Sylvester; Paul Durkin; Jacob A. Covault; High curvatures drive river meandering. Geology (2019) 47 (3): 263–266.
 DOI: 10.1130/G45608.1  
 [3]Jon Schwenk, Efi Foufoula‐Georgiou; Meander cutoffs nonlocally accelerate upstream and downstream migration and channel widening. Geophysical Research Letters (2016) 43 (24): 12,437-12,445. DOI: 10.1002/2016GL071670
+[4]Peter Diggle, Statistical Analysis of Spatial and Spatio-Temporal Point Patterns, Third Edition. 2014. 
 
