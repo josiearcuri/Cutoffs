@@ -5,28 +5,28 @@ import itertools as it
 
 class RipleysKEstimator_spacetime:
     def __init__(self,t_max, d_max, t_min, d_min, width):
-        self.t_max = t_max
-        self.d_max = d_max
-        self.t_min = t_min
-        self.d_min = d_min
-        self.width = width
+        self.t_max = t_max # last year
+        self.d_max = d_max # max centerline length
+        self.t_min = t_min # 0
+        self.d_min = d_min # 0
+        self.width = width 
         
 
     def __call__(self, cutoffs, mode):
         return self.mc_env(cutoffs = cutoffs, nit=99, mode = mode)
     
     def _pairwise_diffs(self, data):
+        """compute array of distanced between every point in 1D"""
         npts = len(data)
-        diff = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double)
+        diff = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double) 
         k = 0
-        
         for i in range(npts - 1):
             for j in range(i+1, npts):
                 diff[k] = abs(data[i] - data[j])
                 k += 1
-        
         return diff
     def _near_neigh(self, data):
+        """compute array of distance between every point and its nearest neighbor in 1D"""
         npts = len(data)
         diff = np.zeros(shape=npts, dtype=np.double)
         for i in range(npts):
@@ -39,17 +39,13 @@ class RipleysKEstimator_spacetime:
     
     def evaluate(self, data, dist_space, dist_time, mode):
         data = np.asarray(data)
-
-        if not data.shape[1] == 2:
-            raise ValueError('data must be an n by 2 array, where n is the '
-                             'number of observed points.')
-
         npts = len(data)
         
 
-        stat_d = np.zeros(len(dist_space))
-        stat_t = np.zeros(len(dist_time))
-        stat_dt = np.zeros((len(dist_space), len(dist_time)))
+        stat_d = np.zeros(len(dist_space)) #1-D spatial statistic
+        stat_t = np.zeros(len(dist_time))#1-D temporal statistic
+        stat_dt = np.zeros((len(dist_space), len(dist_time))) #2D space-time statistic
+        
         null = stat_dt.copy()
         if mode == "H":
             deltaspace = self._pairwise_diffs(data[:,0])
@@ -101,7 +97,7 @@ class RipleysKEstimator_spacetime:
             return(stat_dt)
          
     def mc_env(self,cutoffs, nit, mode): 
-            #generate random distibutions in same space + time ranges as data
+        #generate random distibutions in same space + time ranges as data
         rng = np.random.default_rng(seed = 42)
         data = cutoffs[['downstream_distance', 'time']].to_numpy() 
         num_samples = len(cutoffs.time)
@@ -138,14 +134,19 @@ class RipleysKEstimator_spacetime:
             ax.set_yticks(np.arange(len(r_time))[1::2])
             ax.set_yticklabels((r_time[1::2]).astype(int))
             ax.set_xticklabels((r_space[1::2]/self.width).astype(int), rotation='vertical')
-            im = ax.imshow(((stat_dt-middle_dt)*(stat_dt<(k_d*(k_t.reshape(len(r_time),1))))*((stat_dt>upper_dt)+(stat_dt<lower_dt)))/middle_dt,vmin = -1, vmax = 1, origin='lower', cmap = "seismic")
-            plt.title("departure from both")
+            nonrandom = (stat_dt>upper_dt)+(stat_dt<lower_dt)
+            dependent = (stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
+             
+            
+            
+            im = ax.imshow(((stat_dt-middle_dt)*nonrandom*dependent)/middle_dt,vmin = -np.max(stat_dt/middle_dt), vmax = np.max(stat_dt/middle_dt), origin='lower', cmap = "seismic")
+            plt.title("significant space-time nonrandomness")
             #im = ax.imshow(((stat_dt-(k_d*(k_t.reshape(len(r_time),1))))/(k_d*(k_t.reshape(len(r_time),1)))),origin='lower',vmin = -1, vmax = 1, cmap = "seismic")
             #im = ax.imshow((middle_dt-(r_space*(r_time.reshape(len(r_time),1))))/(self.t_max *self.d_max),origin='lower', cmap = "seismic")
             #*((stat_dt>upper_dt)+(stat_dt<lower_dt)))
 #/(r_space*r_time.reshape(len(r_time), 1))
             cbar = ax.figure.colorbar(im, ax=ax)
-            cbar.ax.set_ylabel("local intensity/poisson intensity", rotation=-90, va="bottom")
+            cbar.ax.set_ylabel("% departure from poisson", rotation=-90, va="bottom")
             # Plot the surface.
 #((stat_dt>upper_dt)+(stat_dt<lower_dt))*
             #urf = ax.plot_surface(X,Y,stat_dt,
