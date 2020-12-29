@@ -1,5 +1,5 @@
 # Cutoffs
-A library for integrating real centerlines with MeanderPy, simulating migration that includes nonlocal effects from cutoffs, and analyzing resulting cutoff distributions. 
+A library for simulating channel centerline migration that accounts for nonlocal effects from cutoff, and analyzing resulting cutoff distributions. 
 
 
 ## HKplus
