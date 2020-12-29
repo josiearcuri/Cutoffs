@@ -17,6 +17,6 @@ all included in environment file
 [1]https://github.com/zsylvester/meanderpy  
 [2]Zoltán Sylvester; Paul Durkin; Jacob A. Covault; High curvatures drive river meandering. Geology (2019) 47 (3): 263–266.
 DOI: 10.1130/G45608.1  
-[3]Jon Schwenk, Efi Foufoula‐Georgiou; Meander cutoffs nonlocally accelerate upstream and downstream migration and channel widening. Geophysical Research Letters (2016) 43 (24): 12,437-12,445. DOI: 10.1002/2016GL071670
+[3]Jon Schwenk, Efi Foufoula‐Georgiou; Meander cutoffs nonlocally accelerate upstream and downstream migration and channel widening. Geophysical Research Letters (2016) 43 (24): 12,437-12,445. DOI: 10.1002/2016GL071670  
 [4]Peter Diggle, Statistical Analysis of Spatial and Spatio-Temporal Point Patterns, Third Edition. 2014. 
 
