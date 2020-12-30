@@ -136,26 +136,16 @@ class RipleysKEstimator_spacetime:
             ax.set_xticklabels((r_space[1::2]/self.width).astype(int), rotation='vertical')
             nonrandom = (stat_dt>upper_dt)+(stat_dt<lower_dt)
             dependent = (stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
+            
              
             
             
-            im = ax.imshow(((stat_dt-middle_dt)*nonrandom*dependent)/middle_dt,vmin = -np.max(stat_dt/middle_dt), vmax = np.max(stat_dt/middle_dt), origin='lower', cmap = "seismic")
+            im = ax.imshow(nonrandom*(((stat_dt)-((2*r_space*(r_time.reshape(len(r_time),1))))))/((r_space*(r_time.reshape(len(r_time),1)))), origin='lower',vmin = -5, vmax = 5, cmap = "seismic")
+
             plt.title("significant space-time nonrandomness")
-            #im = ax.imshow(((stat_dt-(k_d*(k_t.reshape(len(r_time),1))))/(k_d*(k_t.reshape(len(r_time),1)))),origin='lower',vmin = -1, vmax = 1, cmap = "seismic")
-            #im = ax.imshow((middle_dt-(r_space*(r_time.reshape(len(r_time),1))))/(self.t_max *self.d_max),origin='lower', cmap = "seismic")
-            #*((stat_dt>upper_dt)+(stat_dt<lower_dt)))
-#/(r_space*r_time.reshape(len(r_time), 1))
+
             cbar = ax.figure.colorbar(im, ax=ax)
-            cbar.ax.set_ylabel("% departure from poisson", rotation=-90, va="bottom")
-            # Plot the surface.
-#((stat_dt>upper_dt)+(stat_dt<lower_dt))*
-            #urf = ax.plot_surface(X,Y,stat_dt,
-             #         linewidth=0)
-            #surf = ax.plot_surface(X,Y/self.width,,
-             #          linewidth=0)
-            # Add a color bar which maps values to colors.
-            #fig.colorbar(surf)
-            #((stat_dt>upper_dt)+(stat_dt<lower_dt))*
+            cbar.ax.set_ylabel("more/less cutoffs than expected under poission", rotation=-90, va="bottom")
             plt.show()
         else:
             upper_d = np.ma.max(mc_d, axis = 1) -(r_space) 

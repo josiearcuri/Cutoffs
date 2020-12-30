@@ -11,9 +11,12 @@ import time, sys
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib import cm
+import time
 
 
-def update_progress(progress):
+
+
+def update_progress(progress, start_time):
     """progress bar from https://stackoverflow.com/questions/3160699/python-progress-bar
     update_progress() : Displays or updates a console progress bar
     Accepts a float between 0 and 1. Any int will be converted to a float.
@@ -33,8 +36,8 @@ def update_progress(progress):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
-    sys.stdout.write(text)
+    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*int(round(barLength-block)), progress*100, status)
+    sys.stdout.write(text + "-- %s minute(s) --" % int(round((time.time() - start_time)/60)))
     sys.stdout.flush()
 
 class Channel:
@@ -85,18 +88,18 @@ class ChannelBelt:
         self.bump_scale = bump_scale
         self.cut_thresh = cut_thresh
 
-    def migrate(self,nit,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
+    def migrate(self,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
         """function for computing migration rates along channel centerlines and moving the centerlines accordingly
         inputs:
-        nit - number of iterations
         saved_ts - which time steps will be saved
         deltas - distance between nodes on centerline
         pad - padding for upstream bc (number of nodepoints along centerline)
         crdist - threshold distance at which cutoffs occur
         Cf - dimensionless Chezy friction factor
         kl - migration rate constant (m/s)
-        kv - vertical slope-dependent erosion rate constant (m/s)
         dt - time step (s)"""
+        start_time = time.time()
+
         channel = self.channels[-1] # first channel is the same as last channel of input
         x = channel.x; y = channel.y; W = channel.W; D = channel.D; 
         
@@ -115,28 +118,26 @@ class ChannelBelt:
         gamma = 2.5 # from Ikeda et al., 1981 and Howard and Knutson, 1984
         ne = np.zeros_like(x) #array to keep track of nonlocal effects
         ymax = self.bump_scale*kl*2
-        for itn in range(nit): # main loop
-            update_progress(itn/nit) 
+        itn = 0
+        while len(self.cutoffs)<self.cut_thresh: # main loop
+            itn = itn+1
+            update_progress(len(self.cutoffs)/self.cut_thresh, start_time) 
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
             klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
             x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
             x,y,xc,yc,cut_dist, cut_len = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             
-            
             if len(xc)>0: # save cutoff data
-                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn+1)*dt/(365*24*60*60.0)) # create cutoff object
+                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0)) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
-                self.cutoff_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
+                self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
                 self.cutoffs.append(cutoff)
-                #abort if enough cutoffs have occured
-                if len(self.cutoff_dists)>= self.cut_thresh:
-                    return
             # saving centerlines:
-            if np.mod(itn+1,saved_ts)==0:
+            if np.mod(itn,saved_ts)==0:
                 channel = Channel(x,y,W,D) # create channel object, save year
-                self.cl_times.append(last_cl_time+(itn+1)*dt/(365*24*60*60.0))
+                self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
     def plot(self, plot_type, pb_age, ob_age, end_time, n_channels):
         """plot ChannelBelt object
