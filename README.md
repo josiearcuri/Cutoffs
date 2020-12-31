@@ -11,7 +11,6 @@ This version considers additions to migration rate from cutoff events' hydraulic
 
 ## Dependencies
 Numpy, Scipy, Pandas,Matplotlib, Seaborn
-all included in environment file
 
 ## References
 [1]https://github.com/zsylvester/meanderpy  
