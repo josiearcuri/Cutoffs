@@ -120,33 +120,19 @@ class RipleysKEstimator_spacetime:
 
     
         if mode == 'K_st':
+      
             upper_dt = np.ma.max(mc_dt, axis = 2)
             lower_dt = np.ma.min(mc_dt, axis = 2)
             middle_dt = np.ma.mean(mc_dt, axis = 2)
             k_d, k_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode='K') 
 
             stat_dt = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
-            null = np.multiply(k_d, k_t.reshape(len(r_time),1))
-            ax = plt.subplot(1,1,1)
-            ax.set_ylabel('time (years)')
-            ax.set_xlabel('distance (ch-w)')
-            ax.set_xticks(np.arange(len(r_space))[1::2])
-            ax.set_yticks(np.arange(len(r_time))[1::2])
-            ax.set_yticklabels((r_time[1::2]).astype(int))
-            ax.set_xticklabels((r_space[1::2]/self.width).astype(int), rotation='vertical')
-            nonrandom = (stat_dt>upper_dt)+(stat_dt<lower_dt)
-            dependent = (stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
-            
-             
-            
-            
-            im = ax.imshow(nonrandom*(((stat_dt)-((2*r_space*(r_time.reshape(len(r_time),1))))))/((r_space*(r_time.reshape(len(r_time),1)))), origin='lower',vmin = -5, vmax = 5, cmap = "seismic")
+ 
 
-            plt.title("significant space-time nonrandomness")
-
-            cbar = ax.figure.colorbar(im, ax=ax)
-            cbar.ax.set_ylabel("more/less cutoffs than expected under poission", rotation=-90, va="bottom")
-            plt.show()
+            clustered = (stat_dt>upper_dt)*(stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
+            regular =  (stat_dt<lower_dt)*(stat_dt<(k_d*(k_t.reshape(len(r_time),1))))
+            nonrandom = (clustered+regular)*((stat_dt/(r_space*(r_time.reshape(len(r_time),1))))-2)
+            self.plot_st(r_space, r_time, nonrandom)
         else:
             upper_d = np.ma.max(mc_d, axis = 1) -(r_space) 
             upper_t = np.ma.max(mc_t, axis = 1) -(r_time)
@@ -159,28 +145,50 @@ class RipleysKEstimator_spacetime:
             stat_d, stat_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
             stat_d = (stat_d) -(r_space) 
             stat_t = (stat_t) -(r_time)
-            fig = plt.figure()
-     #plot CSR envelope
-            plt.plot(r_space/self.width, upper_d, color='red', ls=':', label='_nolegend_', linewidth = .5)
-            plt.plot(r_space/self.width, lower_d, color='red', ls=':', label='_nolegend_', linewidth = .5)
-            plt.plot(r_space/self.width, middle_d, color='red', ls=':', label='CSR', linewidth = .5)
-            plt.plot(r_space/self.width, stat_d, color = "black", linewidth = .5,label = str(num_samples)+ ' cutoffs')
-            plt.legend(loc = 'lower right')
-            plt.xlabel("d along centerline (ch-w)")
-            plt.ylabel(mode)
-            plt.title("Homegrown 1D space EDF")
-        #plt.savefig(resultdir + str(year)+"yrs_Space_Ripley_"+mode+".jpg", dpi = 500)
-            plt.show()
-    
-            fig2 = plt.figure()
-     #plot CSR envelope
-            plt.plot(r_time, upper_t, color='red', ls=':',linewidth = .5, label='_nolegend_')
-            plt.plot(r_time, lower_t, color='red', ls=':',linewidth = .5, label='_nolegend_')
-            plt.plot(r_time, middle_t, color='red', ls=':',linewidth = .5, label='CSR')
-            plt.plot(r_time, stat_t, color = "black", linewidth = .5, label =str(num_samples)+ ' cutoffs')
-            plt.legend(loc = 'lower right')
-            plt.xlabel("t in years")
-            plt.ylabel(mode)
-            plt.title("Homegrown 1D time EDF")
-            plt.show()
+            self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t)
         
+    def plot_st(self, r_space, r_time, normalized):
+        plt.rcParams.update({'font.size': 8})
+        ax = plt.subplot(1,1,1)
+        ax.set_ylabel('t (years)')
+        ax.set_xlabel('d (ch-w)')
+        ax.set_xticks(np.arange(len(r_space))[1::2])
+        ax.set_yticks(np.arange(len(r_time))[1::2])
+        ax.set_yticklabels((r_time[1::2]).astype(int))
+        ax.set_xticklabels((r_space[1::2]/self.width).astype(int))#, rotation='vertical')
+        cmap = plt.get_cmap('RdYlGn')
+        cmap.set_bad('white')
+        #im = ax.imshow(np.ma.masked_values(normalized, 0), origin='lower',vmin = -5, vmax = 5, cmap = cmap)
+        im = ax.pcolormesh(np.ma.masked_values(normalized, 0),vmin = -2, vmax = 2, cmap = cmap, edgecolors='k', linewidths=.005, shading='auto')
+        plt.title("significant spatiotemporal cutoff intensities")
+
+        cbar = ax.figure.colorbar(im, ax=ax, ticks = [-2,-1,0,1,2])
+        cbar.ax.set_ylabel("# additional cutoffs", va="bottom", rotation=-90)
+        cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
+            #
+        plt.show()
+    def plot(self,upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t):
+        fig = plt.figure()
+     #plot CSR envelope
+        plt.plot(r_space/self.width, upper_d, color='red', ls=':', label='_nolegend_', linewidth = .5)
+        plt.plot(r_space/self.width, lower_d, color='red', ls=':', label='_nolegend_', linewidth = .5)
+        plt.plot(r_space/self.width, middle_d, color='red', ls=':', label='CSR', linewidth = .5)
+        plt.plot(r_space/self.width, stat_d, color = "black", linewidth = .5,label = str(num_samples)+ ' cutoffs')
+        plt.legend(loc = 'lower right')
+        plt.xlabel("d along centerline (ch-w)")
+        plt.ylabel(mode)
+        plt.title("Homegrown 1D space EDF")
+        #plt.savefig(resultdir + str(year)+"yrs_Space_Ripley_"+mode+".jpg", dpi = 500)
+        plt.show()
+    
+        fig2 = plt.figure()
+     #plot CSR envelope
+        plt.plot(r_time, upper_t, color='red', ls=':',linewidth = .5, label='_nolegend_')
+        plt.plot(r_time, lower_t, color='red', ls=':',linewidth = .5, label='_nolegend_')
+        plt.plot(r_time, middle_t, color='red', ls=':',linewidth = .5, label='CSR')
+        plt.plot(r_time, stat_t, color = "black", linewidth = .5, label =str(num_samples)+ ' cutoffs')
+        plt.legend(loc = 'lower right')
+        plt.xlabel("t in years")
+        plt.ylabel(mode)
+        plt.title("Homegrown 1D time EDF")
+        plt.show()
