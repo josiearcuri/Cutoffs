@@ -1,5 +1,5 @@
 # Cutoffs
-A library for simulating channel centerline migration that accounts for nonlocal effects from cutoff, and analyzing resulting cutoff distributions. 
+A library for simulating channel centerline migration that accounts for nonlocal effects from meander bend cutoffs, and tests resulting cutoff distributions for spatiotemporal patterns. 
 
 
 ## HKplus
