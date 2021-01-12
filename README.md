@@ -1,7 +1,5 @@
 # Cutoffs
-A library for simulating channel centerline migration that accounts for nonlocal effects from cutoff, and analyzing resulting cutoff distributions.
-
-
+A library for simulating channel centerline migration that accounts for nonlocal effects from cutoffs, and analyzing resulting cutoff distributions.
 
 ## HKplus
 This module builds upon previous implementations of Howard and Knutson's centerline migration model based on local and weigthed upstream curvatures[1,2].   
@@ -11,13 +9,21 @@ This version considers additions to migration rate from cutoff events' hydraulic
  A set of functions used to test cutoff distributions collected by HKplus iterations for spatiotemporal clustering.  This includes a monte carlo sampling method to test cutoff distibutions against randomly-generated and therefore homogenous and independent point processes[4].   
 
 ## Demonstration
- A full notebook will be available shortly, but here is are some example outputs:
- 
-![image](./sample_results/5mpyr/OnlyCurvature450_cutoffs_timevsspace)
+A full notebook will be available shortly, but here is are some example outputs:
+*simulate channel centerline migration*
+
+![image of centerlines]()
+
+*record when and where meander bend cutoffs occur as events in 2-d space-time.* 
+
+![image of distribution]()
+
+*statistically compare intensities of cutoff events to randomness*
+
+![image of stat test]()
 
 ## Dependencies
 Numpy, Scipy, Pandas,Matplotlib, Seaborn
-all included in environment file
 
 ## References
 [1]https://github.com/zsylvester/meanderpy  
