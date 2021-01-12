@@ -1,5 +1,6 @@
 # Cutoffs
-A library for simulating channel centerline migration that accounts for nonlocal effects from cutoff, and analyzing resulting cutoff distributions. 
+A library for simulating channel centerline migration that accounts for nonlocal effects from cutoff, and analyzing resulting cutoff distributions.
+
 
 
 ## HKplus
@@ -8,6 +9,10 @@ This version considers additions to migration rate from cutoff events' hydraulic
 
 ## SpaceTime
  A set of functions used to test cutoff distributions collected by HKplus iterations for spatiotemporal clustering.  This includes a monte carlo sampling method to test cutoff distibutions against randomly-generated and therefore homogenous and independent point processes[4].   
+
+## Demonstration
+ A full notebook will be available shortly, but here is are some example outputs:
+![gifThing](sample_results/5mpyr/OnlyCurvature450_cutoffs_timevsspace?raw=true)
 
 ## Dependencies
 Numpy, Scipy, Pandas,Matplotlib, Seaborn
