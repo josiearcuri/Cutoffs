@@ -525,13 +525,11 @@ def cut_off_cutoffs(x,y,s,crdist,deltas):
     while len(ind1)>0:
         xc.append(x[ind1[0]:ind2[0]+1]) # x coordinates of cutoff
         yc.append(y[ind1[0]:ind2[0]+1]) # y coordinates of cutoff
-        #########JOSIE ADDITIONS###############
         dx, dy, ds, s_little = compute_derivatives(x[:ind1[0]+1],y[:ind1[0]+1])#compute derivatives upstream of cutoff
         cl_dist.append(s_little[-1]) #cutoff distance downstream
         #max_curv = np.max(compute_curvature(x[ind1[0]:ind2[0]+1],y[ind1[0]:ind2[0]+1]))  #maximum curvature along cutoff bend
         dx, dy, ds, s_between = compute_derivatives(xc[-1],yc[-1])#compute derivatives along cutoff bend
         cut_len.append(s_between[-1]) #length removed by cutoff
-        ########################
         x = np.hstack((x[:ind1[0]+1],x[ind2[0]:])) # x coordinates after cutoff
         y = np.hstack((y[:ind1[0]+1],y[ind2[0]:])) # y coordinates after cutoff
         
