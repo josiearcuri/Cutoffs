@@ -12,7 +12,8 @@ This version considers additions to migration rate from cutoff events' hydraulic
 
 ## Demonstration
  A full notebook will be available shortly, but here is are some example outputs:
-![gifThing](sample_results/5mpyr/OnlyCurvature450_cutoffs_timevsspace?raw=true)
+ 
+![image](./sample_results/5mpyr/OnlyCurvature450_cutoffs_timevsspace)
 
 ## Dependencies
 Numpy, Scipy, Pandas,Matplotlib, Seaborn
