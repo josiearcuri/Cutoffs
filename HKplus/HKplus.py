@@ -38,7 +38,7 @@ def update_progress(progress, start_time):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*int(round(barLength-block)), progress*100, status)
+    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*int(round(barLength-block)), int(progress*100), status)
     sys.stdout.write(text + "-- %s minute(s) --" % int(round((time.time() - start_time)/60)))
     sys.stdout.flush()
 
@@ -123,7 +123,7 @@ class ChannelBelt:
         ymax = self.bump_scale*kl*2
         itn = 0
         for itn in range(nit): # main loop
-            update_progress(itn/nit)
+            update_progress(itn/nit, start_time)
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
             klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
             x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
@@ -411,8 +411,7 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     gamma - constant in HK model
     R0 - nominal migration rate (dimensionless curvature * migration rate constant)"""
     R1 = np.zeros(ns) # preallocate adjusted channel migration rate
-    check = list(range(ns))
-    pad_up = ns-(pad)-1
+    pad_up = ns-pad
     #########Periodic Boundary#########################
     for i in range(2,pad):
         si2 = np.hstack((np.array([0]),np.cumsum(np.hstack((ds[i-1::-1], ds[ns-1:pad_up:-1])))))
@@ -569,20 +568,20 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .05
    
     ###decay old NE
     ne_new = ne_new*np.exp(-decay)
-    ### remove ne that are less than some threshold, default = .001 (1/10th of a percent) 
+    ### remove ne that are less than some threshold, default = .05 (1/20 of background rate)
     ne_new[np.where(ne_new<thresh)] = 0
 
     for k in range(len(cut_dist)): #for each cutoff, add new NE
         #get distances of upstream and downstream extent to add NE
-        US = cut_dist[k] - cut_len[k]*1.19
-        DS = cut_dist[k] + cut_len[k]*1.19
-        if US<0:
-            US = 0
-        if DS>s[-1]:
-            DS = s[-1]
+        #US = cut_dist[k] - cut_len[k]*1.19
+        #DS = cut_dist[k] + cut_len[k]*1.19
+        #if US<0:
+         #   US = 0
+        #if DS>s[-1]:
+          #  DS = s[-1]
         #get indices corresponding to these distances
-        idx_us = np.where(s<=US)[0][-1]
-        idx_ds = np.where(s>=DS)[0][0]
+        #idx_us = np.where(s<=US)[0][-1]
+        #idx_ds = np.where(s>=DS)[0][0]
 
         #gaussian bump
         mu = cut_dist[k]

@@ -16,23 +16,22 @@ Cf = 0.022              # dimensionless Chezy friction factor
 kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
 dt = .5*365*24*60*60.0     # time step (s)
 pad= 100                     # dont change
-saved_ts = 200               # which time steps centerline will be saved at
+saved_ts = 50               # which time steps centerline will be saved at
 crdist = W                    # how close  banks get before cutoff in m
-nbends = 100                # approximate number of bends to model
 
 #Set Variables for nonlocal efects
 decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
 bump_scale = 0              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
-cut_thresh = 450            #how many cutoffs to simulate
+cut_thresh = 20            #how many cutoffs to simulate
 
 #Set mode for titles
 mode = "OnlyCurvature"
 
 #Set Result Directory
-result_dir = "sample_results/5mpyr/OnlyCurvature/" 
+result_dir = "sample_results/" 
 
 #Load existing Centerline
-filepath ="sample_data/InitialChannel/InitialCL_5mpyr.csv"
+filepath ="sample_data/InitialChannel/InitialCL_10mpyr.csv"
 ch= hkp.load_initial_channel(filepath, W, D, deltas)
 
 #Ititalize Channel Belt for migration

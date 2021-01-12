@@ -9,15 +9,15 @@ import numpy as np
 import pandas as pd
 
 #Set Variables for centerline and curvature calculation
-D = 10;   
-W = 150                     #constant width
-deltas = 50;            #spacing of nodes along centerline
-nit = 1000              # number of iterations
+D = 10;                     #approximate for HK model
+W = 150                     #constant width (m)
+deltas = 50;            #spacing of nodes along centerline (m)
+nit = 400              # number of iterations
 Cf = 0.022              # dimensionless Chezy friction factor
 kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
 dt = .5*365*24*60*60.0     # time step (s)
 pad= 100                     # dont change
-saved_ts = 200               # which time steps centerline will be saved at
+saved_ts = 50               # which time steps centerline will be saved at
 crdist = W                    # how close  banks get before cutoff in m
 
 #Set Variables fro nonlocal efects
@@ -26,15 +26,14 @@ bump_scale = 0              #to multiple kl by,amplitude of ne bump, range betwe
 cut_thresh = 100            #how many cutoffs to simulate, arbitrary if running for time
 
 #Set Result Directory
-result_dir = "sample_results/InitialChannel/" ##change this to wherever you want to save your results
-name= "10mpyr"
+result_dir = "sample_data/InitialChannel/" ##change this to wherever you want to save your results
 
 #Load Existing Centerline
-filepath ="sample_data/InitialChannel/InitialCL_5mpyr.csv"
-ch= mp.load_initial_channel(filepath, W, D, deltas)
+filepath ="sample_data/InitialChannel/InitialCL_10mpyr.csv"
+ch= hkp.load_initial_channel(filepath, W, D, deltas)
 
 #Initialize Channel Belt for Migration
-chb = mp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], cutoff_dists = [], decay_rate = decay_rate, bump_scale = bump_scale, cut_thresh = cut_thresh)
+chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], cutoff_dists = [], decay_rate = decay_rate, bump_scale = bump_scale, cut_thresh = cut_thresh)
 
 #Plot initial channel
 chb.plot('strat',20,60,chb.cl_times[-1], len(chb.channels))
@@ -53,4 +52,4 @@ plt.show()
 xes = chb.channels[-1].x
 yes = chb.channels[-1].y
 cl = pd.DataFrame({'x': xes, 'y': yes});
-cl.to_csv(result_dir+"InitialCL_5mpyr.csv", header = False, index = False)
+cl.to_csv(result_dir+"InitialCL_10mpyr.csv", header = False, index = False)

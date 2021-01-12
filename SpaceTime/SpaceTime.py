@@ -2,21 +2,35 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import itertools as it
-
+"""
+class of functions to statistically compare cutoff 2-d spatiotemporal point processes to simulated complete spatial randomness.  This is an implementation of Ripley's K function for 2-D space time.
+"""
 class RipleysKEstimator_spacetime:
     def __init__(self,t_max, d_max, t_min, d_min, width):
+        """initialize estimator
+        t_max - int, last year of model iteration
+        d_max - int, longest centerline length
+        t_min - int, 0 
+        d_min - in, 0
+        width - constant channel width in m"""
         self.t_max = t_max # last year
         self.d_max = d_max # max centerline length
         self.t_min = t_min # 0
         self.d_min = d_min # 0
-        self.width = width 
+        self.width = width  #150
         
 
     def __call__(self, cutoffs, mode):
+        """
+        perform main function
+        """
         return self.mc_env(cutoffs = cutoffs, nit=99, mode = mode)
     
     def _pairwise_diffs(self, data):
-        """compute array of distanced between every point in 1D"""
+        """
+        compute array of distances between every point in 1D
+        data - 1-D array of deltas, space or time
+        """
         npts = len(data)
         diff = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double) 
         k = 0
@@ -26,7 +40,10 @@ class RipleysKEstimator_spacetime:
                 k += 1
         return diff
     def _near_neigh(self, data):
-        """compute array of distance between every point and its nearest neighbor in 1D"""
+        """
+        compute array of distance between every point and its nearest neighbor in 1D
+        data - 1-D array of deltas, space or time
+        """
         npts = len(data)
         diff = np.zeros(shape=npts, dtype=np.double)
         for i in range(npts):
@@ -38,6 +55,19 @@ class RipleysKEstimator_spacetime:
         return diff
     
     def evaluate(self, data, dist_space, dist_time, mode):
+        """
+        
+        INPUTS
+        data - 2-D array of N by 2 size where N is number of cutoffs in dataset, column [:,0] records distance downstream and           [:,1] is time.
+        dist_space - 1-D array of radii to search in for intensity estimates
+        dist_time - 1-D array of durations to search in for intensity estimates
+        mode - statistical measurement to be made, str, either 'K_st, 'K', 'G', or 'H'
+        
+        OUTPUTS
+        stat_d - 1-D Ripleys K at distances dist_space
+        stat_t -  1-D temporal Ripleys K at durations dist_time
+        stat_dt - 2-D spatiotemporal Ripleys K of M by N{n} size, where M{t} is dist_space, T is dist_time, and each array member is the intensity of the sampled point process at n search distance and t search time. 
+        """
         data = np.asarray(data)
         npts = len(data)
         
@@ -48,6 +78,9 @@ class RipleysKEstimator_spacetime:
         
         null = stat_dt.copy()
         if mode == "H":
+            """
+            H , the probability of finding neighbors in search dist
+            """
             deltaspace = self._pairwise_diffs(data[:,0])
             deltatime = self._pairwise_diffs(data[:,1])
             for i in range(len(dist_space)):
@@ -60,6 +93,9 @@ class RipleysKEstimator_spacetime:
             stat_d = 2*stat_d/(npts*(npts-1)) 
             return (stat_d, stat_t)
         if mode == "G":
+            """
+            G, probability the nearest neighbor is within search dist
+            """
             deltaspace = self._near_neigh(data[:,0])
             deltatime = self._near_neigh(data[:,1])
             for i in range(len(dist_space)):
@@ -73,6 +109,9 @@ class RipleysKEstimator_spacetime:
             stat_d = stat_d/(npts)
             return (stat_d, stat_t)
         if mode == "K":
+            """
+            number of additional events near other events on time scales of dist_time and spatial scales of dist_space, 2 1-d plots
+            """
             deltaspace = self._pairwise_diffs(data[:,0])
             deltatime = self._pairwise_diffs(data[:,1])
             for i in range(len(dist_space)):
@@ -85,6 +124,9 @@ class RipleysKEstimator_spacetime:
             stat_d = (self.d_max*stat_d/((npts-1)*npts))
             return (stat_d, stat_t)
         if mode == "K_st":
+            """
+            number of additional events near other events given sepcific search distances and durations. 2D heatmap
+            """
             areas = np.ones_like(stat_dt)
             deltaspace = self._pairwise_diffs(data[:,0])
             deltatime = self._pairwise_diffs(data[:,1])
@@ -97,7 +139,9 @@ class RipleysKEstimator_spacetime:
             return(stat_dt)
          
     def mc_env(self,cutoffs, nit, mode): 
-        #generate random distibutions in same space + time ranges as data
+        """
+        generate random distibutions in same space + time ranges as data
+        """
         rng = np.random.default_rng(seed = 42)
         data = cutoffs[['downstream_distance', 'time']].to_numpy() 
         num_samples = len(cutoffs.time)
@@ -120,13 +164,20 @@ class RipleysKEstimator_spacetime:
 
     
         if mode == 'K_st':
+            ## monte carlo envelope - limits on probable randomness
             upper_dt = np.ma.max(mc_dt, axis = 2)
             lower_dt = np.ma.min(mc_dt, axis = 2)
             middle_dt = np.ma.mean(mc_dt, axis = 2)
+            #1-d dpace and time k values, use for testing independence
             k_d, k_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode='K') 
-
+            #space-time K
             stat_dt = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
-            null = np.multiply(k_d, k_t.reshape(len(r_time),1))
+            
+            #locations of statictically nonrandom, dependent K values
+            nonrandom = (stat_dt>upper_dt)+(stat_dt<lower_dt)
+            dependent = (stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
+            
+            #plot
             ax = plt.subplot(1,1,1)
             ax.set_ylabel('time (years)')
             ax.set_xlabel('distance (ch-w)')
@@ -134,11 +185,7 @@ class RipleysKEstimator_spacetime:
             ax.set_yticks(np.arange(len(r_time))[1::2])
             ax.set_yticklabels((r_time[1::2]).astype(int))
             ax.set_xticklabels((r_space[1::2]/self.width).astype(int), rotation='vertical')
-            nonrandom = (stat_dt>upper_dt)+(stat_dt<lower_dt)
-            dependent = (stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
-            
-             
-            
+
             
             im = ax.imshow(nonrandom*(((stat_dt)-((2*r_space*(r_time.reshape(len(r_time),1))))))/((r_space*(r_time.reshape(len(r_time),1)))), origin='lower',vmin = -5, vmax = 5, cmap = "seismic")
 
@@ -148,6 +195,7 @@ class RipleysKEstimator_spacetime:
             cbar.ax.set_ylabel("more/less cutoffs than expected under poission", rotation=-90, va="bottom")
             plt.show()
         else:
+            #monte carlo envelope
             upper_d = np.ma.max(mc_d, axis = 1) -(r_space) 
             upper_t = np.ma.max(mc_t, axis = 1) -(r_time)
         
@@ -156,11 +204,17 @@ class RipleysKEstimator_spacetime:
    
             middle_d = np.ma.mean(mc_d, axis = 1) -(r_space)
             middle_t = np.ma.mean(mc_t, axis = 1) -(r_time)
+        
+            #K values
             stat_d, stat_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
+            
+            #normalize to what's expected under poisson
             stat_d = (stat_d) -(r_space) 
             stat_t = (stat_t) -(r_time)
+            
+            #1-d spatial Ripley's K
             fig = plt.figure()
-     #plot CSR envelope
+            #plot CSR envelope
             plt.plot(r_space/self.width, upper_d, color='red', ls=':', label='_nolegend_', linewidth = .5)
             plt.plot(r_space/self.width, lower_d, color='red', ls=':', label='_nolegend_', linewidth = .5)
             plt.plot(r_space/self.width, middle_d, color='red', ls=':', label='CSR', linewidth = .5)
@@ -169,11 +223,12 @@ class RipleysKEstimator_spacetime:
             plt.xlabel("d along centerline (ch-w)")
             plt.ylabel(mode)
             plt.title("Homegrown 1D space EDF")
-        #plt.savefig(resultdir + str(year)+"yrs_Space_Ripley_"+mode+".jpg", dpi = 500)
             plt.show()
-    
+            
+            
+            #1-D Temporal Ripley's K
             fig2 = plt.figure()
-     #plot CSR envelope
+            #plot CSR envelope
             plt.plot(r_time, upper_t, color='red', ls=':',linewidth = .5, label='_nolegend_')
             plt.plot(r_time, lower_t, color='red', ls=':',linewidth = .5, label='_nolegend_')
             plt.plot(r_time, middle_t, color='red', ls=':',linewidth = .5, label='CSR')

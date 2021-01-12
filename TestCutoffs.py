@@ -7,7 +7,7 @@ import numpy as np
 import SpaceTime 
 
 #Set location of cutoff distribution to test
-file = "sample_results/2mpyr/NonlocalEffects200_cutoffs_distribution.csv"
+file = "sample_results/OnlyCurvature20_cutoffs_distribution.csv"
 W = 150
 
 #read point pattern as events in space(distance downstream) and time (model years),
@@ -22,7 +22,7 @@ if year >= 50**2:
 else:
     print("Warning: model not run long enough to search over 50-year windows")
         
-##print("Longest channel centerline at least " + str(length)+ " ch-w")
+print("Longest channel centerline at least " + str(length)+ " ch-w")
 if int(length/W) >= 50**2:
     print("centerline is sufficently long enough for statistical tests")
 else: 

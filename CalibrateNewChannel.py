@@ -13,14 +13,14 @@ import pandas as pd
 D = 10;   
 W = 150                     #constant width
 deltas = 50;            #spacing of nodes along centerline
-nit = 1000              # number of iterations
+nit = 2000              # number of iterations
 Cf = 0.022              # dimensionless Chezy friction factor
 kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
 dt = .5*365*24*60*60.0     # time step (s)
 pad= 100                     # dont change
 saved_ts = 200               # which time steps centerline will be saved at
 crdist = W                    # how close  banks get before cutoff in m
-nbends = 100                # approximate number of bends to model
+nbends = 150                # approximate number of bends to model
 
 #Set Variables fro nonlocal efects
 decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
@@ -29,11 +29,11 @@ cut_thresh = 100            #how many cutoffs to simulate, arbitrary if running 
 
 
 #Set Result Directory
-result_dir = "sample_results/InitialChannel/" ##change this to wherever you want to save your results
+result_dir = "sample_data/InitialChannel/" ##change this to wherever you want to save your results
 name= "10mpyr"
 
 #Initiate Channel Object
-ch = hkp.generate_initial_channel(W,D,Sl,deltas,pad,nbends)
+ch = hkp.generate_initial_channel(W,D,deltas,pad,nbends)
 
 #Initiate Channel Belt for migrating channel object
 chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], cutoff_dists = [], decay_rate = decay_rate, bump_scale = bump_scale, cut_thresh = cut_thresh)
@@ -44,7 +44,7 @@ plt.title(str(int(nit*dt/(365*24*60*60.0)))+ " years at "+ str(kl*(365*24*60*60.
 plt.show()
  
 #Migrate Centerline
-chb.migrate_years(nit,saved_ts,deltas,pad,crdist,Cf,kl,kv,dt) 
+chb.migrate_years(nit,saved_ts,deltas,pad,crdist,Cf,kl,dt) 
 
 #Plot Resulting Centerline
 chb.plot('strat',20,60,chb.cl_times[-1], len(chb.channels))
@@ -55,4 +55,4 @@ plt.show()
 xes = chb.channels[-1].x
 yes = chb.channels[-1].y
 cl = pd.DataFrame({'x': xes, 'y': yes});
-cl.to_csv(result_dir+"InitialCL_"+name"+"".csv", header = False, index = False)
+cl.to_csv(result_dir+"InitialCL_"+name+".csv", header = False, index = False)
