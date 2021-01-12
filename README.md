@@ -1,5 +1,5 @@
 # Cutoffs
-<<<<<<< HEAD
+
 A library for simulating channel centerline migration that accounts for nonlocal effects from cutoffs, and analyzing resulting cutoff distributions.
 
 ## HKplus
