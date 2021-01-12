@@ -1,17 +1,19 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
+import time, sys
+
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.colors as mcolors
+import matplotlib.gridspec as gridspec
+from matplotlib import cm
+
 from scipy.stats import norm
 import scipy.interpolate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
-import pandas as pd
-from matplotlib.colors import LinearSegmentedColormap
-import time, sys
-import matplotlib.colors as mcolors
-import matplotlib.gridspec as gridspec
-from matplotlib import cm
-import time
+
 
 
 
@@ -36,7 +38,7 @@ def update_progress(progress, start_time):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*int(round(barLength-block)), progress*100, status)
+    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*int(round(barLength-block)), int(progress*100), status)
     sys.stdout.write(text + "-- %s minute(s) --" % int(round((time.time() - start_time)/60)))
     sys.stdout.flush()
 
@@ -88,8 +90,59 @@ class ChannelBelt:
         self.bump_scale = bump_scale
         self.cut_thresh = cut_thresh
 
-    def migrate(self,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
-        """function for computing migration rates along channel centerlines and moving the centerlines accordingly
+    def migrate_years(self,nit,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
+        """function for computing migration rates along channel centerlines and moving them, limited by number of iterations
+        inputs:
+        nit - number of iterations 
+        saved_ts - which time steps will be saved
+        deltas - distance between nodes on centerline
+        pad - padding for upstream bc (number of nodepoints along centerline)
+        crdist - threshold distance at which cutoffs occur
+        Cf - dimensionless Chezy friction factor
+        kl - migration rate constant (m/s)
+        dt - time step (s)"""
+        start_time = time.time()
+
+        channel = self.channels[-1] # first channel is the same as last channel of input
+        x = channel.x; y = channel.y; W = channel.W; D = channel.D; 
+        
+        k = 1.0 # constant in HK equation
+        xc = [] # initialize cutoff coordinates
+        yc = []
+        cut_dist = []# initialize cutoff distance ds array
+        cut_len = []# initialize cutoff length removal array
+        # determine age of last channel:
+        if len(self.cl_times)>0:
+            last_cl_time = self.cl_times[-1]
+        else:
+            last_cl_time = 0
+        dx, dy, ds, s = compute_derivatives(x,y)
+        omega = -1.0 # constant in curvature calculation (Howard and Knutson, 1984)
+        gamma = 2.5 # from Ikeda et al., 1981 and Howard and Knutson, 1984
+        ne = np.zeros_like(x) #array to keep track of nonlocal effects
+        ymax = self.bump_scale*kl*2
+        itn = 0
+        for itn in range(nit): # main loop
+            update_progress(itn/nit, start_time)
+            ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
+            klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
+            x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+            x,y,xc,yc,cut_dist, cut_len = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
+            x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
+            
+            if len(xc)>0: # save cutoff data
+                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0)) # create cutoff object
+                #keep track of year cutoff occurs, where it occurs, and save an object. 
+                self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
+                self.cutoff_dists.append(cut_dist)
+                self.cutoffs.append(cutoff)
+            # saving centerlines:
+            if np.mod(itn,saved_ts)==0:
+                channel = Channel(x,y,W,D) # create channel object, save year
+                self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
+                self.channels.append(channel)
+    def migrate_cuts(self,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
+        """function for computing migration rates along channel centerlines and moving them, limited by number of cutoffs the channel experiences
         inputs:
         saved_ts - which time steps will be saved
         deltas - distance between nodes on centerline
@@ -218,46 +271,6 @@ class ChannelBelt:
         plt.xlim(xmin+100,xmax+100)
         plt.ylim(ymin+100, ymax+100)
         return fig
-    def create_movie(self, xmin, xmax, plot_type, filename, dirname, pb_age, ob_age, scale, times):
-        """method for creating movie frames (PNG files) that capture the plan-view evolution of a channel belt through time
-        movie has to be assembled from the PNG file after this method is applied
-        xmin - value of x coodinate on the left side of frame
-        xmax - value of x coordinate on right side of frame
-        plot_type = - can be either 'strat' (for stratigraphic plot) or 'morph' (for morphologic plot)
-        filename - first few characters of the output filenames
-        dirname - name of directory where output files should be written
-        pb_age - age of point bars (in years) at which they get covered by vegetation (if the 'morph' option is used for 'plot_type')
-        ob_age - age of oxbow lakes (in years) at which they get covered by vegetation (if the 'morph' option is used for 'plot_type')
-        scale - scaling factor (e.g., 2) that determines how many times larger you want the frame to be, compared to the default scaling of the figure
-        end_time - time at which simulation should be stopped
-        n_channels - total number of channels + cutoffs for which simulation is run (usually it is len(chb.cutoffs) + len(chb.channels)). Used when plot_type = 'age'
-        """
-        #xmin = xmin - 5000
-        #xmax = xmax +5000
-        sclt = np.unique(np.hstack((times)))
-        channels = self.channels[:len(sclt)]
-        ymax = np.max(channels[0].y) + 5000
-        ymin = np.min(channels[0].y) - 5000
-        for i in range(0,len(channels)):
-            ymax = max(ymax, np.max(np.abs(channels[i].y)))
-            ymin = min(ymin, np.min(channels[i].y))
-        ymax = ymax+2*channels[0].W # add a bit of space on top and bottom
-        ymin = ymin-2*channels[0].W 
-        for i in range(0,len(sclt)):
-            fig = self.plot(plot_type, pb_age, ob_age, sclt[i], i+1)
-            fig_height = scale*fig.get_figheight()
-            fig_width = (xmax-xmin)*fig_height/(ymax-ymin)
-            fig.set_figwidth(fig_width)
-            fig.set_figheight(fig_height)
-            fig.gca().set_xlim(xmin,xmax)
-            fig.gca().set_ylim(ymin,ymax)
-            fig.gca().set_xticks([])
-            fig.gca().set_yticks([])
-            #plt.plot([xmin+200, xmin+200+5000],[ymin+200, ymin+200], 'k', linewidth=2)
-            #plt.text(xmin+200+2000, ymin+200+100, '5 km', fontsize=14)
-            fname = dirname+filename+'%03d.png'%(i)
-            fig.savefig(fname, dpi = 500)
-            plt.close()
     def cutoff_distributions(self, year, filepath, mode):
         """pull cutoff data from channel belt object and export csv, return dataframe for plotting
         """
@@ -398,8 +411,7 @@ def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     gamma - constant in HK model
     R0 - nominal migration rate (dimensionless curvature * migration rate constant)"""
     R1 = np.zeros(ns) # preallocate adjusted channel migration rate
-    check = list(range(ns))
-    pad_up = ns-(pad)-1
+    pad_up = ns-pad
     #########Periodic Boundary#########################
     for i in range(2,pad):
         si2 = np.hstack((np.array([0]),np.cumsum(np.hstack((ds[i-1::-1], ds[ns-1:pad_up:-1])))))
@@ -513,13 +525,11 @@ def cut_off_cutoffs(x,y,s,crdist,deltas):
     while len(ind1)>0:
         xc.append(x[ind1[0]:ind2[0]+1]) # x coordinates of cutoff
         yc.append(y[ind1[0]:ind2[0]+1]) # y coordinates of cutoff
-        #########JOSIE ADDITIONS###############
         dx, dy, ds, s_little = compute_derivatives(x[:ind1[0]+1],y[:ind1[0]+1])#compute derivatives upstream of cutoff
         cl_dist.append(s_little[-1]) #cutoff distance downstream
         #max_curv = np.max(compute_curvature(x[ind1[0]:ind2[0]+1],y[ind1[0]:ind2[0]+1]))  #maximum curvature along cutoff bend
         dx, dy, ds, s_between = compute_derivatives(xc[-1],yc[-1])#compute derivatives along cutoff bend
         cut_len.append(s_between[-1]) #length removed by cutoff
-        ########################
         x = np.hstack((x[:ind1[0]+1],x[ind2[0]:])) # x coordinates after cutoff
         y = np.hstack((y[:ind1[0]+1],y[ind2[0]:])) # y coordinates after cutoff
         
@@ -556,20 +566,20 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .05
    
     ###decay old NE
     ne_new = ne_new*np.exp(-decay)
-    ### remove ne that are less than some threshold, default = .001 (1/10th of a percent) 
+    ### remove ne that are less than some threshold, default = .05 (1/20 of background rate)
     ne_new[np.where(ne_new<thresh)] = 0
 
     for k in range(len(cut_dist)): #for each cutoff, add new NE
         #get distances of upstream and downstream extent to add NE
-        US = cut_dist[k] - cut_len[k]*1.19
-        DS = cut_dist[k] + cut_len[k]*1.19
-        if US<0:
-            US = 0
-        if DS>s[-1]:
-            DS = s[-1]
+        #US = cut_dist[k] - cut_len[k]*1.19
+        #DS = cut_dist[k] + cut_len[k]*1.19
+        #if US<0:
+         #   US = 0
+        #if DS>s[-1]:
+          #  DS = s[-1]
         #get indices corresponding to these distances
-        idx_us = np.where(s<=US)[0][-1]
-        idx_ds = np.where(s>=DS)[0][0]
+        #idx_us = np.where(s<=US)[0][-1]
+        #idx_ds = np.where(s>=DS)[0][0]
 
         #gaussian bump
         mu = cut_dist[k]
