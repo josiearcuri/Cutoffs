@@ -191,7 +191,7 @@ class ChannelBelt:
             if np.mod(itn,saved_ts)==0:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
-                self.channels.append(channel)
+                self.channels.append(channel)     
     def plot(self, plot_type, pb_age, ob_age, end_time, n_channels):
         """plot ChannelBelt object
         plot_type - can be either 'strat' (for stratigraphic plot) or 'morph' (for morphologic plot)
