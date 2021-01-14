@@ -15,22 +15,22 @@ D = 10;
 W = 150                     #constant width
 deltas = 50;            #spacing of nodes along centerline
 Cf = 0.022              # dimensionless Chezy friction factor
-kl = 5/(365*24*60*60.0) # migration rate constant (m/s)
+kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
 dt = .5*365*24*60*60.0     # time step (s)
 pad= 100                     # dont change
-saved_ts = 40               # which time steps centerline will be saved at
+saved_ts = 20               # which time steps centerline will be saved at
 crdist = W                    # how close  banks get before cutoff in m
 
 #Set Variables for nonlocal efects
 decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
 bump_scale = 4              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
-cut_thresh = 200            #how many cutoffs to simulate
+cut_thresh = 50            #how many cutoffs to simulate
 
 #Set mode for titles
 mode = "NonlocalEffects"
 
 #Set Result Directory
-result_dir = "sample_results/5mpyr_small/" 
+result_dir = "sample_results/10mpyr_small/" 
 
 #Load existing Centerline
 filepath ="sample_data/InitialChannel/InitialCL_10mpyr_small.csv"
@@ -51,5 +51,5 @@ plt.close()
 # Save Cutoff Distributions for Clustering Tests #
 chb.cutoff_distributions(int(chb.cutoff_times[-1]), result_dir, mode)
 plt.title(str(cut_thresh)+" cutoffs with HKplus")
-plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.jpg", transparent=True, bbox_inches = 'tight', dpi = 500)
+plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.png", transparent=True, bbox_inches = 'tight', dpi = 500)
 plt.close()
