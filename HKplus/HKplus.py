@@ -259,7 +259,7 @@ class ChannelBelt:
         
         newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
         
-        fig, ax = plt.subplots(figsize = (5,5))
+        fig, ax = plt.subplots(figsize = (4,4))
     
         sc = ax.scatter(cuts['downstream_distance']/self.channels[-1].W,cuts['time'], c = 'black', s = 1, edgecolor = 'black')
         ncuts = len(cuts['time'])

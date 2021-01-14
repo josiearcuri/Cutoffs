@@ -201,7 +201,7 @@ class RipleysKEstimator_spacetime:
         
     def plot_st(self, r_space, r_time, normalized):
         plt.rcParams.update({'font.size': 10})
-        fig,ax = plt.subplots(figsize = (7,6))
+        fig,ax = plt.subplots(figsize = (5,4))
         ax.set_ylabel('time window (years)')
         ax.set_ylim(bottom=0, top=30)
         ax.set_xlim(left=0, right=30)
@@ -215,7 +215,7 @@ class RipleysKEstimator_spacetime:
         #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
         im = ax.pcolormesh(np.ma.masked_values(normalized, 0),vmin = -2, vmax = 2, cmap = cmap, edgecolors='k', linewidths=.5, shading='auto')
         #ax.grid(which='both', color='k', linewidth=.1)
-        plt.title("Significantly clustered (green) and regular (red) cutoff intensities", pad = 10)
+        plt.title("Significant cutoff K values:\n clustering (green) and regularity (red)", pad = 10)
         cbar = ax.figure.colorbar(im, ax=ax, ticks = [-2,-1,0,1,2])
         cbar.ax.set_ylabel("# additional cutoffs expected", va="bottom", rotation=-90)
         cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 

@@ -51,5 +51,5 @@ plt.close()
 # Save Cutoff Distributions for Clustering Tests #
 chb.cutoff_distributions(int(chb.cutoff_times[-1]), result_dir, mode)
 plt.title(str(cut_thresh)+" cutoffs with HKplus")
-plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.png", transparent=True, bbox_inches = 'tight', dpi = 500)
+plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.png", transparent=True, dpi = 500)
 plt.close()
