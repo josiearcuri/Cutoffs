@@ -16,8 +16,6 @@ from scipy.spatial import distance
 
 
 
-
-
 def update_progress(progress, start_time):
     """progress bar from https://stackoverflow.com/questions/3160699/python-progress-bar
     update_progress() : Displays or updates a console progress bar
@@ -191,7 +189,50 @@ class ChannelBelt:
             if np.mod(itn,saved_ts)==0:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
-                self.channels.append(channel)     
+                self.channels.append(channel)
+    def plot_channels(self):
+        cot = np.array(self.cutoff_times)
+        sclt = np.array(self.cl_times)
+        times = np.unique(np.sort(np.hstack((cot,sclt))))
+        
+        # set up min and max x and y coordinates of the plot:
+        xmin = np.min(self.channels[0].x)
+        xmax = 1
+        ymax = 1
+        for i in range(len(self.channels)):
+            ymax = max(ymax, np.max(np.abs(self.channels[i].y)))
+            xmax = max(xmax, np.max(np.abs(self.channels[i].x)))
+
+        ymax = ymax+200# add a bit of space on top and bottom
+        ymin = -1*ymax
+        # size figure so that its size matches the size of the model:
+        fig, ax = plt.subplots(figsize=(10,(ymax-ymin)*10/(xmax-xmin)))
+        cmap = cm.get_cmap('gray_r',len(sclt))
+        order = 0
+        for i in range(0,len(sclt)):        
+            x1 = self.channels[i].x
+            y1 = self.channels[i].y
+            W = self.channels[i].W
+            xm, ym = get_channel_banks(x1,y1,W)
+            order += 1
+            plt.fill(xm,ym,facecolor=cmap(i/len(sclt)),edgecolor = 'k', linewidth=0.1,zorder=order, label= '_nolegend_')
+        xes = np.zeros(len(self.cutoffs)*2)
+        yes = np.zeros(len(self.cutoffs)*2)
+        for i in range(0,len(cot)):
+            for j in range(0,len(self.cutoffs[i].x)):
+                x1 = self.cutoffs[i].x[j]
+                y1 = self.cutoffs[i].y[j]
+                xes[i+j]=x1[j]
+                yes[i+j]=y1[j]
+        ax.scatter(xes[xes!=0],yes[xes!=0],c = 'r',s=150, label = "cutoffs")
+        ax.legend(frameon = False, loc = 'center left',bbox_to_anchor=(6000/(xmax+2000), 0, .1, .1), markerscale = .5)
+        plt.axis('equal')
+        ax.plot([xmin, xmin+5000],[ymin, ymin], 'k', linewidth=2)
+        ax.text(xmin+1500, ymin+200+200, '5 km', fontsize=9)
+        ax.axis('off')
+        ax.set_xlim([xmin-1000,xmax+1000])
+        ax.set_ylim([ymin-200,ymax])
+        return fig
     def plot(self, plot_type, pb_age, ob_age, end_time, n_channels):
         """plot ChannelBelt object
         plot_type - can be either 'strat' (for stratigraphic plot) or 'morph' (for morphologic plot)

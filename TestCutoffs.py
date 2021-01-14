@@ -5,9 +5,10 @@
 import pandas as pd
 import numpy as np
 import SpaceTime 
+import os
 
 #Set location of cutoff distribution to test
-file = "sample_results/OnlyCurvature20_cutoffs_distribution.csv"
+file = "sample_results/10mpyr_small/NonlocalEffects500_cutoffs_distribution.csv"
 W = 150
 
 #read point pattern as events in space(distance downstream) and time (model years),
@@ -27,7 +28,7 @@ if int(length/W) >= 50**2:
     print("centerline is sufficently long enough for statistical tests")
 else: 
     print("Warning: centerline only long enough to search over " +str(int(np.sqrt(length/W)))+" ch-w windows")
-    
+input()   
 #Initialize Ripley's K test for 2d space-time
 Kest = SpaceTime.RipleysKEstimator_spacetime(t_max=year, d_max=length, t_min=0, d_min=0, width = W)
 

@@ -20,7 +20,7 @@ dt = .5*365*24*60*60.0     # time step (s)
 pad= 100                     # dont change
 saved_ts = 200               # which time steps centerline will be saved at
 crdist = W                    # how close  banks get before cutoff in m
-nbends = 150                # approximate number of bends to model
+nbends = 50                # approximate number of bends to model
 
 #Set Variables fro nonlocal efects
 decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
@@ -30,7 +30,7 @@ cut_thresh = 100            #how many cutoffs to simulate, arbitrary if running 
 
 #Set Result Directory
 result_dir = "sample_data/InitialChannel/" ##change this to wherever you want to save your results
-name= "10mpyr"
+name= "10mpyr_small"
 
 #Initiate Channel Object
 ch = hkp.generate_initial_channel(W,D,deltas,pad,nbends)

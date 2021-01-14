@@ -178,7 +178,7 @@ class RipleysKEstimator_spacetime:
 
             clustered = (stat_dt>upper_dt)*(stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
             regular =  (stat_dt<lower_dt)*(stat_dt<(k_d*(k_t.reshape(len(r_time),1))))
-            normalized = ((stat_dt/(r_space*(r_time.reshape(len(r_time),1))))-2)
+            normalized = ((stat_dt/(r_space*(r_time.reshape(len(r_time),1))))-2)*(clustered+regular)
             self.plot_st(r_space, r_time, normalized)
         else:
             #monte carlo envelope
