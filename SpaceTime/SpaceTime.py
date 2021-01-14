@@ -20,11 +20,11 @@ class RipleysKEstimator_spacetime:
         self.width = width  #150
         
 
-    def __call__(self, cutoffs, mode):
+    def __call__(self, cutoffs, mode, max_search_d, max_search_t):
         """
         perform main function
         """
-        return self.mc_env(cutoffs = cutoffs, nit=99, mode = mode)
+        return self.mc_env(cutoffs = cutoffs, nit=99, mode = mode, max_search_d=max_search_d, max_search_t=max_search_t)
     
     def _pairwise_diffs(self, data):
         """
@@ -138,15 +138,15 @@ class RipleysKEstimator_spacetime:
            
             return(stat_dt)
          
-    def mc_env(self,cutoffs, nit, mode): 
+    def mc_env(self,cutoffs, nit, mode, max_search_d, max_search_t): 
         """
         generate random distibutions in same space + time ranges as data
         """
         rng = np.random.default_rng(seed = 42)
         data = cutoffs[['downstream_distance', 'time']].to_numpy() 
         num_samples = len(cutoffs.time)
-        r_time = np.linspace(1,50)
-        r_space = np.linspace(self.width,self.width*50)
+        r_time = np.linspace(1,max_search_d, max_search_d)
+        r_space = np.linspace(self.width,self.width*max_search_t, max_search_t)
         mc_d = np.zeros((len(r_space), nit))
         mc_t = np.zeros((len(r_time), nit))
         mc_dt = np.zeros((len(r_space), len(r_time), nit))
@@ -200,26 +200,27 @@ class RipleysKEstimator_spacetime:
             self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t)
         
     def plot_st(self, r_space, r_time, normalized):
-        plt.rcParams.update({'font.size': 8})
-        ax = plt.subplot(1,1,1)
-        ax.set_ylabel('t (years)')
-        ax.set_xlabel('d (ch-w)')
-        ax.set_xticks(np.arange(len(r_space))[1::2]+.5)
-        ax.set_yticks(np.arange(len(r_time))[1::2]+.5)
+        plt.rcParams.update({'font.size': 10})
+        fig,ax = plt.subplots(figsize = (7,6))
+        ax.set_ylabel('time window (years)')
+        ax.set_ylim(bottom=0, top=30)
+        ax.set_xlim(left=0, right=30)
+        ax.set_xlabel('search distance (ch-w)')
+        ax.set_xticks(r_space[1::2]/self.width-.5)
+        ax.set_yticks(r_time[1::2] -.5)
         ax.set_yticklabels((r_time[1::2]).astype(int))
         ax.set_xticklabels((r_space[1::2]/self.width).astype(int))#, rotation='vertical')
         cmap = plt.get_cmap('RdYlGn')
         cmap.set_bad('white')
         #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
-        im = ax.pcolormesh(np.ma.masked_values(normalized, 0),vmin = -2, vmax = 2, cmap = cmap, edgecolors='k', linewidths=.005, shading='auto')
-        #ax.grid(which='minor', color='k', linewidth=2)
-        plt.title("significant spatiotemporal cutoff intensities")
-
+        im = ax.pcolormesh(np.ma.masked_values(normalized, 0),vmin = -2, vmax = 2, cmap = cmap, edgecolors='k', linewidths=.5, shading='auto')
+        #ax.grid(which='both', color='k', linewidth=.1)
+        plt.title("Significantly clustered (green) and regular (red) cutoff intensities", pad = 10)
         cbar = ax.figure.colorbar(im, ax=ax, ticks = [-2,-1,0,1,2])
-        cbar.ax.set_ylabel("# additional cutoffs", va="bottom", rotation=-90)
+        cbar.ax.set_ylabel("# additional cutoffs expected", va="bottom", rotation=-90)
         cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
             #
-        plt.show()
+        return fig
     def plot(self,upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t):
         #1-d spatial Ripley's K
         fig = plt.figure()
