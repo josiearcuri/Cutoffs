@@ -35,5 +35,5 @@ Kest = SpaceTime.RipleysKEstimator_spacetime(t_max=year, d_max=length, t_min=0, 
 
 #Run tests that output figures when complete
 Kest(cutoffs= cutoffs, mode = 'K_st', max_search_d= 30,max_search_t = 30)
-plt.savefig(result_dir +"OnlyCurvature"+str(len(cutoffs['time']))+"_cutoffs_spacetimektest.jpg", transparent=True, bbox_inches = 'tight', dpi = 300)
+plt.savefig(result_dir +"OnlyCurvature"+str(len(cutoffs['time']))+"_cutoffs_spacetimektest.png", transparent=True, bbox_inches = 'tight')
 plt.close()

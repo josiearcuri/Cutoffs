@@ -258,15 +258,16 @@ class ChannelBelt:
         cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'x': x_location, 'y': y_location})
         
         newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
-        
-        fig, ax = plt.subplots(figsize = (4,4))
-    
-        sc = ax.scatter(cuts['downstream_distance']/self.channels[-1].W,cuts['time'], c = 'black', s = 1, edgecolor = 'black')
+
+        fig = plt.figure(figsize = (3,3))
+        plt.rcParams.update({'font.size': 8})
+
+        plt.scatter(cuts['downstream_distance']/self.channels[-1].W,cuts['time'], c = 'black', s = 1, edgecolor = 'black')
         ncuts = len(cuts['time'])
-        ax.set_ylabel("time (years)")
-        ax.set_xlim(left=0)
-        ax.set_ylim(bottom=0)
-        ax.set_xlabel("distance downstream (ch-w)")
+        plt.ylabel("time (years)")
+        plt.xlim(left=0)
+        plt.ylim(bottom=0)
+        plt.xlabel("distance downstream (ch-w)")
         return fig     
     
 def resample_centerline(x,y,deltas):

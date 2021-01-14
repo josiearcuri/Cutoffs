@@ -45,11 +45,11 @@ chb.migrate_cuts(saved_ts,deltas,pad,crdist,Cf,kl,dt)
 #Plot resulting Centerline
 chb.plot_channels()
 plt.title(str(int(chb.cutoff_times[-1]))+ " years at "+ str(kl*(365*24*60*60.0))+ "m/yr")
-plt.savefig(result_dir+mode+"_channels_"+str(cut_thresh)+"cutoffs.png", dpi = 500)
+plt.savefig(result_dir+mode+"_channels_"+str(cut_thresh)+"cutoffs.png")
 plt.close()
 
 # Save Cutoff Distributions for Clustering Tests #
 chb.cutoff_distributions(int(chb.cutoff_times[-1]), result_dir, mode)
 plt.title(str(cut_thresh)+" cutoffs with HKplus")
-plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.png", transparent=True, dpi = 500)
+plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.png",bbox_inches='tight', transparent=True)
 plt.close()

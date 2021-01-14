@@ -200,7 +200,7 @@ class RipleysKEstimator_spacetime:
             self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t)
         
     def plot_st(self, r_space, r_time, normalized):
-        plt.rcParams.update({'font.size': 10})
+        plt.rcParams.update({'font.size': 8})
         fig,ax = plt.subplots(figsize = (5,4))
         ax.set_ylabel('time window (years)')
         ax.set_ylim(bottom=0, top=30)
