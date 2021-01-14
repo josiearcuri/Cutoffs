@@ -23,11 +23,11 @@ crdist = W                    # how close  banks get before cutoff in m
 
 #Set Variables for nonlocal efects
 decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
-bump_scale = 4              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
+bump_scale = 0              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
 cut_thresh = 50            #how many cutoffs to simulate
 
 #Set mode for titles
-mode = "NonlocalEffects"
+mode = "OnlyCurvature"
 
 #Set Result Directory
 result_dir = "sample_results/10mpyr_small/" 
@@ -50,6 +50,6 @@ plt.close()
 
 # Save Cutoff Distributions for Clustering Tests #
 chb.cutoff_distributions(int(chb.cutoff_times[-1]), result_dir, mode)
-plt.title(str(cut_thresh)+" cutoffs with HKplus")
+plt.title(str(cut_thresh)+" cutoffs with original HK model")
 plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.png",bbox_inches='tight', transparent=True)
 plt.close()

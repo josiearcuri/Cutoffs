@@ -14,11 +14,11 @@ A full notebook will be available shortly, but here is are some example outputs:
 
 *simulate channel centerline migration*
 
-![image of centerlines](sample_results/10mpyr_small/NonlocalEffects_channels_50cutoffs.png)
+![image of centerlines](sample_results/10mpyr_small/OnlyCurvature_channels_50cutoffs.png)
 
 *record when and where meander bend cutoffs occur as events in 2-d space-time* 
 
-![image of distribution](sample_results/10mpyr_small/NonlocalEffects50_cutoffs_timevsspace.png)
+![image of distribution](sample_results/10mpyr_small/OnlyCurvature50_cutoffs_timevsspace.png)
 
 *statistically compare intensities of cutoff events to randomness*
 
