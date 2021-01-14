@@ -3,7 +3,7 @@
 A library for simulating channel centerline migration that accounts for nonlocal effects from cutoffs, and analyzing resulting cutoff distributions.
 
 ## HKplus
-This module builds upon previous implementations of Howard and Knutson's centerline migration model based on local and weigthed upstream curvatures[1,2]. With its main structure modeled after MeanderPy, this version considers additions to migration rate from cutoff events' hydraulic effects when calculating centerline migration.   After a cutoff occurs, a gaussian bump is introduced to migration rate in the location on the centerline where that cutoff occured, before upstream curvature is accounted for by HK's model. The dimensions and decay of each bump are set accordance with ours and others' findings from remote sensing analyses[3], but can easily be adjusted.
+This module builds upon previous implementations of Howard and Knutson's centerline migration model based on local and weigthed upstream curvatures[1,2]. With its main structure modeled after MeanderPy, this version considers additions to migration rate from cutoff events' estimated hydraulic effects when calculating centerline migration.   After a cutoff occurs, a gaussian bump is introduced to migration rate in the location on the centerline where that cutoff occured, before upstream curvature is accounted for by HK's model. The dimensions and decay of each bump are set accordance with ours and others' findings from remote sensing analyses[3], but can easily be adjusted.
 
 
 ## SpaceTime
@@ -14,15 +14,15 @@ A full notebook will be available shortly, but here is are some example outputs:
 
 *simulate channel centerline migration*
 
-![image of centerlines]() coming...
+![image of centerlines](sample_results/10mpyr_small/OnlyCurvature_channels_50cutoffs.png)
 
-*record when and where meander bend cutoffs occur as events in 2-d space-time.* 
+*record when and where meander bend cutoffs occur as events in 2-d space-time* 
 
-![image of distribution]()coming...
+![image of distribution](sample_results/10mpyr_small/OnlyCurvature50_cutoffs_timevsspace.png)
 
 *statistically compare intensities of cutoff events to randomness*
 
-![image of stat test]()coming...
+![image of stat test](sample_results/10mpyr_small/OnlyCurvature200_cutoffs_spacetimektest.png)
 
 ## Dependencies
 Numpy, Scipy, Pandas,Matplotlib, Seaborn

@@ -8,13 +8,12 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib import cm
+from matplotlib.markers import MarkerStyle
 
 from scipy.stats import norm
 import scipy.interpolate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
-
-
 
 
 
@@ -58,7 +57,7 @@ class Channel:
 
 class Cutoff:
     """class for Cutoff objects"""
-    def __init__(self,x,y,W,dist, time):
+    def __init__(self,x,y,W,dist, time, cut_len):
         """initialize Cutoff object
         x, y,  - coordinates of centerline
         W - channel width
@@ -68,6 +67,7 @@ class Cutoff:
         self.W = W
         self.dist = np.max(dist)
         self.time = time
+        self.cut_len = cut_len
         
 class ChannelBelt:
     """class for ChannelBelt objects"""
@@ -131,7 +131,7 @@ class ChannelBelt:
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             
             if len(xc)>0: # save cutoff data
-                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0)) # create cutoff object
+                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
                 self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
@@ -172,7 +172,7 @@ class ChannelBelt:
         ne = np.zeros_like(x) #array to keep track of nonlocal effects
         ymax = self.bump_scale*kl*2
         itn = 0
-        while len(self.cutoffs)<self.cut_thresh: # main loop
+        while len(self.cutoffs)<self.cut_thresh: # main l oop
             itn = itn+1
             update_progress(len(self.cutoffs)/self.cut_thresh, start_time) 
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
@@ -182,116 +182,93 @@ class ChannelBelt:
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             
             if len(xc)>0: # save cutoff data
-                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0)) # create cutoff object
+                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
                 self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
                 self.cutoffs.append(cutoff)
             # saving centerlines:
-            if np.mod(itn,saved_ts)==0:
+            if np.mod(itn,saved_ts)==0 or len(self.cutoffs)>=self.cut_thresh:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
-                self.channels.append(channel)     
-    def plot(self, plot_type, pb_age, ob_age, end_time, n_channels):
-        """plot ChannelBelt object
-        plot_type - can be either 'strat' (for stratigraphic plot) or 'morph' (for morphologic plot)
-        pb_age - age of point bars (in years) at which they get covered by vegetation
-        ob_age - age of oxbow lakes (in years) at which they get covered by vegetation
-        end_time (optional) - age of last channel to be plotted (in years)"""
+                self.channels.append(channel)
+    def plot_channels(self):
         cot = np.array(self.cutoff_times)
         sclt = np.array(self.cl_times)
-        if end_time>0:
-            cot = cot[cot<=end_time]
-            sclt = sclt[sclt<=end_time]
-        times = np.sort(np.hstack((cot,sclt)))
-        times = np.unique(times)
-        order = 0 # variable for ordering objects in plot
+        times = np.unique(np.sort(np.hstack((cot,sclt))))
+        
         # set up min and max x and y coordinates of the plot:
         xmin = np.min(self.channels[0].x)
-        xmax = np.max(self.channels[0].x)
+        xmax = 1
         ymax = 1
         for i in range(len(self.channels)):
             ymax = max(ymax, np.max(np.abs(self.channels[i].y)))
-        ymax = ymax+2*self.channels[0].W # add a bit of space on top and bottom
+            xmax = max(xmax, np.max(np.abs(self.channels[i].x)))
+
+        ymax = ymax+500# add a bit of space on top and bottom
         ymin = -1*ymax
         # size figure so that its size matches the size of the model:
-        fig = plt.figure(figsize=(20,(ymax-ymin)*20/(xmax-xmin))) 
-        if plot_type == 'morph':
-            pb_crit = len(times[times<times[-1]-pb_age])/float(len(times))
-            ob_crit = len(times[times<times[-1]-ob_age])/float(len(times))
-            green = (106/255.0,159/255.0,67/255.0) # vegetation color
-            pb_color = (189/255.0,153/255.0,148/255.0) # point bar color
-            ob_color = (15/255.0,58/255.0,65/255.0) # oxbow color
-            pb_cmap = make_colormap([green,green,pb_crit,green,pb_color,1.0,pb_color]) # colormap for point bars
-            ob_cmap = make_colormap([green,green,ob_crit,green,ob_color,1.0,ob_color]) # colormap for oxbows
-            plt.fill([xmin,xmax,xmax,xmin],[ymin,ymin,ymax,ymax],color=(106/255.0,159/255.0,67/255.0))
-        if plot_type == 'age':
-            age_cmap = cm.get_cmap('magma',n_channels)
+        fig, ax = plt.subplots(figsize=(10,(ymax-ymin)*10/(xmax-xmin)))
+        cmap = cm.get_cmap('gray_r',len(sclt))
+        ax.set_xlim([xmin-1000,xmax+1000])
+        ax.set_ylim([ymin,ymax])
+
+        plt.axis('equal')
+        ax.plot([xmin, xmin+5000],[ymin, ymin], 'k', linewidth=2)
+        ax.text(xmin+1500, ymin+200+100, '5 km', fontsize=8)
+        order = 0
         for i in range(0,len(times)):
-            if times[i] in sclt:
-                ind = np.where(sclt==times[i])[0][0]
-                x1 = self.channels[ind].x
-                y1 = self.channels[ind].y
-                W = self.channels[ind].W
-                xm, ym = get_channel_banks(x1,y1,W)
-                if plot_type == 'morph':
-                    if times[i]>times[-1]-pb_age:
-                        plt.fill(xm,ym,facecolor=pb_cmap(i/float(len(times)-1)),edgecolor='k',linewidth=0.2)
-                    else:
-                        plt.fill(xm,ym,facecolor=pb_cmap(i/float(len(times)-1)))
-                if plot_type == 'strat':
-                    order += 1
-                    plt.fill(xm,ym,sns.xkcd_rgb["light tan"],edgecolor='k',linewidth=0.25,zorder=order)
-                if plot_type == 'age':
-                    order += 1
-                    plt.fill(xm,ym,facecolor=age_cmap(i/float(n_channels-1)),edgecolor='k',linewidth=0.1,zorder=order)
             if times[i] in cot:
                 ind = np.where(cot==times[i])[0][0]
                 for j in range(0,len(self.cutoffs[ind].x)):
                     x1 = self.cutoffs[ind].x[j]
                     y1 = self.cutoffs[ind].y[j]
-                    xm, ym = get_channel_banks(x1,y1,self.cutoffs[ind].W)
-                    if plot_type == 'morph':
-                        plt.fill(xm,ym,color=ob_cmap(i/float(len(times)-1)))
-                    if plot_type == 'strat':
-                        order = order+1
-                        plt.fill(xm,ym,sns.xkcd_rgb["ocean blue"],edgecolor='k',linewidth=0.2,zorder=order)
-                    if plot_type == 'age':
-                        order += 1
-                        plt.fill(xm,ym,sns.xkcd_rgb["sea blue"],edgecolor='k',linewidth=0.1,zorder=order)
-        x1 = self.channels[len(sclt)-1].x
-        y1 = self.channels[len(sclt)-1].y
-        xm, ym = get_channel_banks(x1,y1,self.channels[len(sclt)-1].W)
-        order = order+1
-        if plot_type == 'age':
-            plt.fill(xm,ym,color=sns.xkcd_rgb["sea blue"],zorder=order,edgecolor='k',linewidth=0.1)
-        else:
-            plt.fill(xm,ym,color=(16/255.0,73/255.0,90/255.0),zorder=order,edgecolor='k')
-        plt.axis('equal')
-        plt.xlim(xmin+100,xmax+100)
-        plt.ylim(ymin+100, ymax+100)
+                    W = self.channels[-1].W
+                    xm, ym = get_channel_banks(x1,y1,W)
+                    order += 1
+                    if times[i]==cot[-1] and j==(len(self.cutoffs[ind].x)-1):
+                        plt.fill(xm,ym,facecolor='r',edgecolor = 'none', alpha = .5,zorder=order, label= 'cutoff')
+
+                    else:
+                        plt.fill(xm,ym,facecolor='r',edgecolor = 'none', alpha = .5,zorder=order, label= '_nolegend_')
+                    
+            if times[i] in sclt:
+                ind = np.where(sclt==times[i])[0][0]        
+                x1 = self.channels[ind].x
+                y1 = self.channels[ind].y
+                W = self.channels[ind].W
+                xm, ym = get_channel_banks(x1,y1,W)
+                order += 1
+                plt.fill(xm,ym,facecolor=cmap(ind/len(sclt)),edgecolor = 'k', linewidth=0.1,zorder=order, label= '_nolegend_')
+            
+
+        ax.legend(frameon = False, loc = 'lower left',bbox_to_anchor=(7000/(xmax+2000), 0, .1, .1), markerscale = .1)
+        ax.axis('off')
+
         return fig
+    
     def cutoff_distributions(self, year, filepath, mode):
         """pull cutoff data from channel belt object and export csv, return dataframe for plotting
         """
+        
         distances = [i.dist for i in self.cutoffs]
         times = [i.time for i in self.cutoffs]
         x_location = [i.x for i in self.cutoffs]
         y_location = [i.y for i in self.cutoffs]
         cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'x': x_location, 'y': y_location})
-        newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
         
-        f = plt.figure()
-    
-        sc = plt.scatter(cuts['time'], cuts['downstream_distance']/1000, c = 'black', s = 1, edgecolor = 'black')
+        newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
+
+        fig = plt.figure(figsize = (3,3))
+        plt.rcParams.update({'font.size': 8})
+
+        plt.scatter(cuts['downstream_distance']/self.channels[-1].W,cuts['time'], c = 'black', s = 1, edgecolor = 'black')
         ncuts = len(cuts['time'])
-        plt.title(str(ncuts)+" cutoffs with "+ mode)
-        plt.xlabel("time (years)")
-        plt.ylabel("distance downstream (km)")
-        plt.tight_layout(.5)
-    
-        plt.savefig(filepath + mode+str(ncuts)+"_cutoffs_timevsspace.jpg", dpi = 500)
-     
+        plt.ylabel("time (years)")
+        plt.xlim(left=0)
+        plt.ylim(bottom=0)
+        plt.xlabel("distance downstream (ch-w)")
+        return fig     
     
 def resample_centerline(x,y,deltas):
     dx, dy, ds, s = compute_derivatives(x,y) # compute derivatives
@@ -368,7 +345,6 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
         ch - MeanderPy object of channel centerline
         x - uninterpolated array of x coordinates
         y - uninterpolated array of y coordinates
-        z - array of z coordinates
         cl_len - length of  centerline(m) """
     #use pandas to load x,y coordinates and widths of centerline from csv
     varlist = [pd.read_csv(file, sep = ',', header=None).values for file in filelist]
@@ -459,23 +435,6 @@ def compute_curvature(x,y):
     ddy = np.gradient(dy) 
     curvature = (dx*ddy-dy*ddx)/((dx**2+dy**2)**1.5)
     return curvature
-
-def make_colormap(seq):
-    """Return a LinearSegmentedColormap
-    seq: a sequence of floats and RGB-tuples. The floats should be increasing
-    and in the interval (0,1).
-    [from: https://stackoverflow.com/questions/16834861/create-own-colormap-using-matplotlib-and-plot-color-scale]
-    """
-    seq = [(None,) * 3, 0.0] + list(seq) + [1.0, (None,) * 3]
-    cdict = {'red': [], 'green': [], 'blue': []}
-    for i, item in enumerate(seq):
-        if isinstance(item, float):
-            r1, g1, b1 = seq[i - 1]
-            r2, g2, b2 = seq[i + 1]
-            cdict['red'].append([item, r1, r2])
-            cdict['green'].append([item, g1, g2])
-            cdict['blue'].append([item, b1, b2])
-    return mcolors.LinearSegmentedColormap('CustomMap', cdict)
 
 def kth_diag_indices(a,k):
     """function for finding diagonal indices with k offset
