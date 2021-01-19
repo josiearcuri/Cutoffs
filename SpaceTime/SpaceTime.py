@@ -120,8 +120,8 @@ class RipleysKEstimator_spacetime:
             for i in range(len(dist_time)):
                 t_indicator = (deltatime<=dist_time[i])
                 stat_t[i] = (t_indicator).sum()
-            stat_t = (self.t_max*stat_t/(npts*(npts-1)))
-            stat_d = (self.d_max*stat_d/((npts-1)*npts))
+            stat_t = 2*(self.t_max*stat_t/(npts*(npts-1)))
+            stat_d = 2*(self.d_max*stat_d/((npts-1)*npts))
             return (stat_d, stat_t)
         if mode == "K_st":
             """
@@ -134,7 +134,7 @@ class RipleysKEstimator_spacetime:
                 for t in range(len(dist_time)):
                     dt_indicator = (deltatime<=dist_time[t])&(deltaspace <=dist_space[x])
                     stat_dt[x,t] = (dt_indicator).sum()
-            stat_dt = (self.d_max*self.t_max*stat_dt)/(npts*(npts-1))
+            stat_dt = 2*(self.d_max*self.t_max*stat_dt)/(npts*(npts-1))
            
             return(stat_dt)
          
@@ -165,43 +165,43 @@ class RipleysKEstimator_spacetime:
     
         if mode == 'K_st':
             ## monte carlo envelope - limits on probable randomness
-
             upper_dt = np.ma.max(mc_dt, axis = 2)
             lower_dt = np.ma.min(mc_dt, axis = 2)
             middle_dt = np.ma.mean(mc_dt, axis = 2)
+            
             #1-d dpace and time k values, use for testing independence
             k_d, k_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode='K') 
             #space-time K
             stat_dt = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
-
+        
             #locations of statictically nonrandom, dependent K values
-
+            #significantly more aggregated than upper mc env, and
             clustered = (stat_dt>upper_dt)*(stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
             regular =  (stat_dt<lower_dt)*(stat_dt<(k_d*(k_t.reshape(len(r_time),1))))
-            normalized = ((stat_dt/(r_space*(r_time.reshape(len(r_time),1))))-2)*(clustered+regular)
+            normalized = (stat_dt/(r_space*(r_time.reshape(len(r_time),1)))-4)*(clustered+regular)
             self.plot_st(r_space, r_time, normalized)
         else:
             #monte carlo envelope
-            upper_d = np.ma.max(mc_d, axis = 1) -(r_space) 
-            upper_t = np.ma.max(mc_t, axis = 1) -(r_time)
+            upper_d = np.ma.max(mc_d, axis = 1)/r_space -2
+            upper_t = np.ma.max(mc_t, axis = 1) /(r_time) -2
         
-            lower_d = np.ma.min(mc_d, axis = 1)-(r_space)
-            lower_t = np.ma.min(mc_t, axis = 1) -(r_time)
-   
-            middle_d = np.ma.mean(mc_d, axis = 1) -(r_space)
-            middle_t = np.ma.mean(mc_t, axis = 1) -(r_time)
+            lower_d = np.ma.min(mc_d, axis = 1)/(r_space) -2
+            lower_t = np.ma.min(mc_t, axis = 1)/(r_time) -2
+            #Simulated Poisson distrubution
+            middle_d = np.ma.mean(mc_d, axis = 1)/(r_space)-2
+            middle_t = np.ma.mean(mc_t, axis = 1)/(r_time)-2
         
             #K values
             stat_d, stat_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
             
             #normalize to what's expected under poisson
-            stat_d = (stat_d) -(r_space) 
-            stat_t = (stat_t) -(r_time)
-            self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t)
+            stat_d = (stat_d)/(r_space) -2
+            stat_t = (stat_t)/(r_time) -2
+            self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t, num_samples)
         
     def plot_st(self, r_space, r_time, normalized):
-        plt.rcParams.update({'font.size': 8})
-        fig,ax = plt.subplots(figsize = (5,4))
+        plt.rcParams.update({'font.size': 10})
+        fig,ax = plt.subplots(figsize = (6,5))
         ax.set_ylabel('time window (years)')
         ax.set_ylim(bottom=0, top=30)
         ax.set_xlim(left=0, right=30)
@@ -213,15 +213,15 @@ class RipleysKEstimator_spacetime:
         cmap = plt.get_cmap('RdYlGn')
         cmap.set_bad('white')
         #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
-        im = ax.pcolormesh(np.ma.masked_values(normalized, 0),vmin = -2, vmax = 2, cmap = cmap, edgecolors='k', linewidths=.5, shading='auto')
+        im = ax.pcolormesh(np.ma.masked_values(normalized, 0), cmap = cmap, edgecolors='k',vmin = -10, vmax = 10, linewidths=.1, shading='auto')
         #ax.grid(which='both', color='k', linewidth=.1)
         plt.title("Significant cutoff K values:\n clustering (green) and regularity (red)", pad = 10)
-        cbar = ax.figure.colorbar(im, ax=ax, ticks = [-2,-1,0,1,2])
+        cbar = ax.figure.colorbar(im, ax=ax)#, ticks = [-2,-1,0,1,2])
         cbar.ax.set_ylabel("# additional cutoffs expected", va="bottom", rotation=-90)
-        cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
+        #cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
             #
         return fig
-    def plot(self,upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t):
+    def plot(self,upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t, num_samples):
         #1-d spatial Ripley's K
         fig = plt.figure()
         #plot CSR envelope
@@ -231,7 +231,7 @@ class RipleysKEstimator_spacetime:
         plt.plot(r_space/self.width, stat_d, color = "black", linewidth = .5,label = str(num_samples)+ ' cutoffs')
         plt.legend(loc = 'lower right')
         plt.xlabel("d along centerline (ch-w)")
-        plt.ylabel(mode)
+        plt.ylabel('K/2-d')
         plt.title("Homegrown 1D space EDF")
         #plt.savefig(resultdir + str(year)+"yrs_Space_Ripley_"+mode+".jpg", dpi = 500)
         plt.show()
@@ -246,6 +246,6 @@ class RipleysKEstimator_spacetime:
         plt.plot(r_time, stat_t, color = "black", linewidth = .5, label =str(num_samples)+ ' cutoffs')
         plt.legend(loc = 'lower right')
         plt.xlabel("t in years")
-        plt.ylabel(mode)
+        plt.ylabel('K/2 -t')
         plt.title("Homegrown 1D time EDF")
         plt.show()

@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import time, sys
 
 import matplotlib.pyplot as plt
@@ -8,7 +7,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib import cm
-from matplotlib.markers import MarkerStyle
+
 
 from scipy.stats import norm
 import scipy.interpolate
@@ -205,7 +204,7 @@ class ChannelBelt:
             ymax = max(ymax, np.max(np.abs(self.channels[i].y)))
             xmax = max(xmax, np.max(np.abs(self.channels[i].x)))
 
-        ymax = ymax+500# add a bit of space on top and bottom
+        ymax = ymax+1000# add a bit of space on top and bottom
         ymin = -1*ymax
         # size figure so that its size matches the size of the model:
         fig, ax = plt.subplots(figsize=(10,(ymax-ymin)*10/(xmax-xmin)))
@@ -249,31 +248,37 @@ class ChannelBelt:
     
     def cutoff_distributions(self, year, filepath, mode):
         """pull cutoff data from channel belt object and export csv, return dataframe for plotting
+        year - last centerline year
+        filepath - where cutoff info csv and distrubution plot are saved
+        mode - for plotting - "OnlyCurvature or "NonlocalEffects"
         """
-        
+        #pull cutoff locations, downstrem distance, time from channel belt as a pandas dataframe
         distances = [i.dist for i in self.cutoffs]
         times = [i.time for i in self.cutoffs]
         x_location = [i.x for i in self.cutoffs]
         y_location = [i.y for i in self.cutoffs]
         cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'x': x_location, 'y': y_location})
         
+        #save distribution to csv
         newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
+        plot_cuts(cuts,self.channels[-1].W, filepath)
+        return cuts
+def plot_cuts(cuts,W, filepath):
+    fig = plt.figure(figsize = (5,5))
+    plt.rcParams.update({'font.size': 10})
 
-        fig = plt.figure(figsize = (3,3))
-        plt.rcParams.update({'font.size': 8})
-
-        plt.scatter(cuts['downstream_distance']/self.channels[-1].W,cuts['time'], c = 'black', s = 1, edgecolor = 'black')
-        ncuts = len(cuts['time'])
-        plt.ylabel("time (years)")
-        plt.xlim(left=0)
-        plt.ylim(bottom=0)
-        plt.xlabel("distance downstream (ch-w)")
-        return fig     
+    plt.scatter(cuts['downstream_distance']/W,cuts['time'], c = 'black', s = 1.5, edgecolor = 'black')
+    ncuts = len(cuts['time'])
+    plt.ylabel("time (years)")
+    plt.xlim(left=0)
+    plt.ylim(bottom=0)
+    plt.xlabel("distance downstream (ch-w)")
+    return fig     
     
 def resample_centerline(x,y,deltas):
     dx, dy, ds, s = compute_derivatives(x,y) # compute derivatives
     # resample centerline so that 'deltas' is roughly constant
-    # [parametric spline representation of curve; note that there is *no* smoothing]
+    # [parametric spline representation of curve]
     tck, u = scipy.interpolate.splprep([x,y],s=0) 
     unew = np.linspace(0,1,1+int(s[-1]/deltas)) # vector for resampling
     out = scipy.interpolate.splev(unew,tck) # resampling
@@ -286,25 +291,23 @@ def nominal_rate(kl, ne):
     new_kl = kl*(1+ne)
     return new_kl
 def migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma):
-  
     dx, dy, ds, s = compute_derivatives(x,y)
     curv = W*compute_curvature(x,y)# dimensionless curvature
-    R0 = klarray*curv
+    R0 = klarray*curv #nominal migration rate with local curvature
     alpha = k*2*Cf/D # exponent for convolution function G
     R1 = compute_migration_rate(pad,len(x),ds,alpha,omega,gamma,R0)
     # calculate new centerline coordinates:
     dy_ds = dy/ds
     dx_ds = dx/ds
-    # adjust x and y coordinates (this *is* the migration):
+    # move x and y coordinates:
     x = x + R1*dy_ds*dt  
     y = y - R1*dx_ds*dt 
     return x,y
 
-
-
 def generate_initial_channel(W,D,deltas,pad,n_bends):
     """generate straight Channel object with some noise added that can serve
     as input for initializing a ChannelBelt object
+    from MeanderPy
     W - channel width
     D - channel depth
     deltas - distance between nodes on centerline
@@ -450,6 +453,7 @@ def kth_diag_indices(a,k):
 def find_cutoffs(x,y,crdist,deltas):
     """function for identifying locations of cutoffs along a centerline
     and the indices of the segments that will become part of the oxbows
+    from MeanderPy
     x,y - coordinates of centerline
     crdist - critical cutoff distance
     deltas - distance between neighboring points along the centerline"""
@@ -467,6 +471,7 @@ def find_cutoffs(x,y,crdist,deltas):
     return ind1, ind2 # return indices of cutoff points and cutoff coordinates
 def cut_off_cutoffs(x,y,s,crdist,deltas):
     """function for executing cutoffs - removing oxbows from centerline and storing cutoff coordinates
+    from MeanderPy
     x,y - coordinates of centerline
     crdist - critical cutoff distance
     deltas - distance between neighboring points along the centerline
@@ -497,6 +502,7 @@ def cut_off_cutoffs(x,y,s,crdist,deltas):
 
 def get_channel_banks(x,y,W):
     """function for finding coordinates of channel banks, given a centerline and a channel width
+    from MeanderPy
     x,y - coordinates of centerline
     W - channel width
     outputs:
@@ -529,16 +535,6 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .05
     ne_new[np.where(ne_new<thresh)] = 0
 
     for k in range(len(cut_dist)): #for each cutoff, add new NE
-        #get distances of upstream and downstream extent to add NE
-        #US = cut_dist[k] - cut_len[k]*1.19
-        #DS = cut_dist[k] + cut_len[k]*1.19
-        #if US<0:
-         #   US = 0
-        #if DS>s[-1]:
-          #  DS = s[-1]
-        #get indices corresponding to these distances
-        #idx_us = np.where(s<=US)[0][-1]
-        #idx_ds = np.where(s>=DS)[0][0]
 
         #gaussian bump
         mu = cut_dist[k]
