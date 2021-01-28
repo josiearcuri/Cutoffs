@@ -178,25 +178,25 @@ class RipleysKEstimator_spacetime:
             #significantly more aggregated than upper mc env, and
             clustered = (stat_dt>upper_dt)*(stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
             regular =  (stat_dt<lower_dt)*(stat_dt<(k_d*(k_t.reshape(len(r_time),1))))
-            normalized = (stat_dt/(r_space*(r_time.reshape(len(r_time),1)))-4)*(clustered+regular)
+            normalized = (stat_dt/(4*r_space*(r_time.reshape(len(r_time),1)))-1)*(clustered+regular)
             self.plot_st(r_space, r_time, normalized)
         else:
             #monte carlo envelope
-            upper_d = np.ma.max(mc_d, axis = 1)/r_space -2
-            upper_t = np.ma.max(mc_t, axis = 1) /(r_time) -2
+            upper_d = np.ma.max(mc_d, axis = 1)/(r_space*2)-1
+            upper_t = np.ma.max(mc_t, axis = 1)/(r_time*2)-1
         
-            lower_d = np.ma.min(mc_d, axis = 1)/(r_space) -2
-            lower_t = np.ma.min(mc_t, axis = 1)/(r_time) -2
+            lower_d = np.ma.min(mc_d, axis = 1)/(r_space*2)-1
+            lower_t = np.ma.min(mc_t, axis = 1)/(r_time*2)-1
             #Simulated Poisson distrubution
-            middle_d = np.ma.mean(mc_d, axis = 1)/(r_space)-2
-            middle_t = np.ma.mean(mc_t, axis = 1)/(r_time)-2
+            middle_d = np.ma.mean(mc_d, axis = 1)/(r_space*2)-1
+            middle_t = np.ma.mean(mc_t, axis = 1)/(r_time*2)-1
         
             #K values
             stat_d, stat_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
             
             #normalize to what's expected under poisson
-            stat_d = (stat_d)/(r_space) -2
-            stat_t = (stat_t)/(r_time) -2
+            stat_d = (stat_d)/(r_space*2) -1
+            stat_t = (stat_t)/(r_time*2) -1
             self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t, num_samples)
         
     def plot_st(self, r_space, r_time, normalized):
@@ -213,7 +213,7 @@ class RipleysKEstimator_spacetime:
         cmap = plt.get_cmap('RdYlGn')
         cmap.set_bad('white')
         #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
-        im = ax.pcolormesh(np.ma.masked_values(normalized, 0), cmap = cmap, edgecolors='k',vmin = -10, vmax = 10, linewidths=.1, shading='auto')
+        im = ax.pcolormesh(np.ma.masked_values(normalized, 0), cmap = cmap, edgecolors='k',vmin = -2, vmax = 2, linewidths=.1, shading='auto')
         #ax.grid(which='both', color='k', linewidth=.1)
         plt.title("Significant cutoff K values:\n clustering (green) and regularity (red)", pad = 10)
         cbar = ax.figure.colorbar(im, ax=ax)#, ticks = [-2,-1,0,1,2])

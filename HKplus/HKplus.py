@@ -377,8 +377,8 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
     points_fitted = np.vstack([spl(np.linspace(0, distance[-1],round(len(x)*smooth_factor))) for spl in splines])
     
     ## z-dim array, interpolated with constant slope along points of centerline.  assumes centerline points are equidistantly placed along original centerline. 
-    deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
-    return [Channel(points_fitted[0],points_fitted[1],W,D), x, y, distance[-1], deltas]
+    #deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
+    return Channel(points_fitted[0],points_fitted[1],W,D)
 
 
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
