@@ -145,8 +145,8 @@ class RipleysKEstimator_spacetime:
         rng = np.random.default_rng(seed = 42)
         data = cutoffs[['downstream_distance', 'time']].to_numpy() 
         num_samples = len(cutoffs.time)
-        r_time = np.linspace(1,max_search_d, max_search_d)
-        r_space = np.linspace(self.width,self.width*max_search_t, max_search_t)
+        r_time = np.linspace(1,max_search_t, max_search_t)
+        r_space = np.linspace(self.width,self.width*max_search_d, max_search_d)
         mc_d = np.zeros((len(r_space), nit))
         mc_t = np.zeros((len(r_time), nit))
         mc_dt = np.zeros((len(r_space), len(r_time), nit))
@@ -154,13 +154,13 @@ class RipleysKEstimator_spacetime:
         for i in range(nit):
             z[:,0] = rng.random(size = num_samples)*self.d_max
             z[:,1] = rng.random(size = num_samples)*self.t_max
-            if mode == 'K_st':
-                k_dt = self.evaluate(data=z, dist_time=r_time, dist_space=r_space, mode=mode) 
-                mc_dt[:, :, i]= k_dt
-            else:
-                k_d, k_t = self.evaluate(data=z, dist_time=r_time, dist_space=r_space, mode=mode) 
-                mc_d[:,i] = k_d
-                mc_t[:,i] =k_t
+
+            k_dt = self.evaluate(data=z, dist_time=r_time, dist_space=r_space, mode='K_st') 
+            mc_dt[:, :, i]= k_dt
+
+            k_d, k_t = self.evaluate(data=z, dist_time=r_time, dist_space=r_space, mode='K') 
+            mc_d[:,i] = k_d
+            mc_t[:,i] = k_t
 
     
         if mode == 'K_st':
@@ -169,17 +169,29 @@ class RipleysKEstimator_spacetime:
             lower_dt = np.ma.min(mc_dt, axis = 2)
             middle_dt = np.ma.mean(mc_dt, axis = 2)
             
-            #1-d dpace and time k values, use for testing independence
-            k_d, k_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode='K') 
+            upper_d = np.ma.max(mc_d, axis = 1)
+            lower_d = np.ma.min(mc_d, axis = 1)
+            upper_t = np.ma.max(mc_t, axis = 1)
+            lower_t = np.ma.min(mc_t, axis = 1)
+
+
             #space-time K
             stat_dt = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
-        
+            dependent_clustered = (stat_dt>np.multiply(upper_d.reshape(len(upper_d),1),upper_t))
+            dependent_regular = (stat_dt<np.multiply(lower_d.reshape(len(lower_d),1),lower_t))
+            
+
             #locations of statictically nonrandom, dependent K values
             #significantly more aggregated than upper mc env, and
-            clustered = (stat_dt>upper_dt)*(stat_dt>(k_d*(k_t.reshape(len(r_time),1))))
-            regular =  (stat_dt<lower_dt)*(stat_dt<(k_d*(k_t.reshape(len(r_time),1))))
-            normalized = (stat_dt/(4*r_space*(r_time.reshape(len(r_time),1)))-1)*(clustered+regular)
-            self.plot_st(r_space, r_time, normalized)
+            clustered = (stat_dt>upper_dt)
+            regular =  (stat_dt<lower_dt)
+            sig_mask = (clustered+regular)*(dependent_clustered+dependent_regular)
+         
+            normalized = (stat_dt-middle_dt)/(4*np.multiply(r_space.reshape(len(r_space),1),r_time.reshape(1,len(r_time))))
+            D = np.sum(normalized*sig_mask)
+            self.plot_st(r_space, r_time, normalized, sig_mask, D)
+            
+            return [D, np.count_nonzero(normalized*sig_mask)]
         else:
             #monte carlo envelope
             upper_d = np.ma.max(mc_d, axis = 1)/(r_space*2)-1
@@ -199,27 +211,33 @@ class RipleysKEstimator_spacetime:
             stat_t = (stat_t)/(r_time*2) -1
             self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t, num_samples)
         
-    def plot_st(self, r_space, r_time, normalized):
+    def plot_st(self, r_space, r_time, normalized, sig_mask, D):
         plt.rcParams.update({'font.size': 10})
-        fig,ax = plt.subplots(figsize = (6,5))
+        fig,ax = plt.subplots(figsize = (8,4))
+        
+        cmap = plt.get_cmap('PiYG')
+        
+        #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
+        im =ax.pcolormesh(np.swapaxes(normalized,0,1), cmap = cmap,vmin = -5, vmax = 5)
+        #plt.pcolor(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1),0), edgecolors='k', linewidths=4, alpha=0.)
+        im2 =ax.pcolormesh(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1)/np.swapaxes(normalized*sig_mask,0,1),0), zorder=2, linewidths = .01,facecolor='none', edgecolors='k',cmap='gray')
+        plt.title('D ='+str(D), pad = 10)
+        cbar = ax.figure.colorbar(im, ax=ax)#, ticks = [-2,-1,0,1,2])
+        cbar.ax.set_ylabel("[K-null]/[d*t]", va="bottom", rotation=-90)
+        #cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
+        ax.set_ylim(bottom=0, top=max(r_time))
+        ax.set_xlim(left=0, right=max(r_space/self.width))
         ax.set_ylabel('time window (years)')
-        ax.set_ylim(bottom=0, top=30)
-        ax.set_xlim(left=0, right=30)
         ax.set_xlabel('search distance (ch-w)')
-        ax.set_xticks(r_space[1::2]/self.width-.5)
-        ax.set_yticks(r_time[1::2] -.5)
+        ax.set_xticks(r_space[1::2]/self.width, minor=True)
+        ax.set_yticks(r_time[1::2], minor=True)
+        ax.set_xticks(r_space[1::2]/self.width-1)
+        ax.set_yticks(r_time[1::2] -1)
         ax.set_yticklabels((r_time[1::2]).astype(int))
         ax.set_xticklabels((r_space[1::2]/self.width).astype(int))#, rotation='vertical')
-        cmap = plt.get_cmap('RdYlGn')
-        cmap.set_bad('white')
-        #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
-        im = ax.pcolormesh(np.ma.masked_values(normalized, 0), cmap = cmap, edgecolors='k',vmin = -2, vmax = 2, linewidths=.1, shading='auto')
-        #ax.grid(which='both', color='k', linewidth=.1)
-        plt.title("Significant cutoff K values:\n clustering (green) and regularity (red)", pad = 10)
-        cbar = ax.figure.colorbar(im, ax=ax)#, ticks = [-2,-1,0,1,2])
-        cbar.ax.set_ylabel("# additional cutoffs expected", va="bottom", rotation=-90)
-        #cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
-            #
+        
+        ax.tick_params(axis = 'both', which = 'major', top =False, bottom = False, left = False, right = False)
+        #ax.grid(True, which='minor', color='k', linewidth=.1)
         return fig
     def plot(self,upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t, num_samples):
         #1-d spatial Ripley's K

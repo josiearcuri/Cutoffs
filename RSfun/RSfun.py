@@ -66,7 +66,7 @@ def probs(cutoffs_df):
    
     n_bins_bump = 4
     n_bins_time = 10
-    bad_idx = (cutoffs_df['duration']==0)|(cutoffs_df['bump']==0)|(cutoffs_df['cluster_flag']==0)
+    bad_idx = (cutoffs_df['duration']==0)|(cutoffs_df['bump']==0)#|(cutoffs_df['cluster_flag']==0)
     # Generate a normal distribution, center at x=0 and y=5
     time = cutoffs_df['duration'].values[~bad_idx]#
     bump = cutoffs_df['bump'].values[~bad_idx]
