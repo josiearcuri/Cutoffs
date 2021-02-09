@@ -70,7 +70,7 @@ class Cutoff:
         
 class ChannelBelt:
     """class for ChannelBelt objects"""
-    def __init__(self, channels, cutoffs, cl_times, cutoff_times, cutoff_dists, decay_rate, bump_scale, cut_thresh):
+    def __init__(self, channels, cutoffs, cl_times, cutoff_times, cutoff_dists, decay_rate, bump_scale, cut_thresh, sinuosity):
         """initialize ChannelBelt object
         channels - list of Channel objects
         cutoffs - list of Cutoff objects
@@ -88,6 +88,7 @@ class ChannelBelt:
         self.decay_rate = decay_rate
         self.bump_scale = bump_scale
         self.cut_thresh = cut_thresh
+        self.sinuosity = sinuosity
 
     def migrate_years(self,nit,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
         """function for computing migration rates along channel centerlines and moving them, limited by number of iterations
@@ -119,8 +120,7 @@ class ChannelBelt:
         omega = -1.0 # constant in curvature calculation (Howard and Knutson, 1984)
         gamma = 2.5 # from Ikeda et al., 1981 and Howard and Knutson, 1984
         ne = np.zeros_like(x) #array to keep track of nonlocal effects
-        ymax = self.bump_scale*kl*2
-        itn = 0
+
         for itn in range(nit): # main loop
             update_progress(itn/nit, start_time)
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
@@ -140,6 +140,7 @@ class ChannelBelt:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
+
     def migrate_cuts(self,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
         """function for computing migration rates along channel centerlines and moving them, limited by number of cutoffs the channel experiences
         inputs:
@@ -179,7 +180,7 @@ class ChannelBelt:
             x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
             x,y,xc,yc,cut_dist, cut_len = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
-            
+            Sin = get_sinuosity(x,s)
             if len(xc)>0: # save cutoff data
                 cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
@@ -191,6 +192,7 @@ class ChannelBelt:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
+                #self.sinuosity.append(Sin)
     def plot_channels(self):
         cot = np.array(self.cutoff_times)
         sclt = np.array(self.cl_times)
@@ -377,8 +379,8 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
     points_fitted = np.vstack([spl(np.linspace(0, distance[-1],round(len(x)*smooth_factor))) for spl in splines])
     
     ## z-dim array, interpolated with constant slope along points of centerline.  assumes centerline points are equidistantly placed along original centerline. 
-    deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
-    return [Channel(points_fitted[0],points_fitted[1],W,D), x, y, distance[-1], deltas]
+    #deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
+    return Channel(points_fitted[0],points_fitted[1],W,D)
 
 
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
@@ -546,5 +548,8 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .05
   
     return ne_new
 
-
+def get_sinuosity(x,s):
+    v_len = x[-1]-x[0]
+    Sin = s[-1]/v_len
+    return Sin
        
