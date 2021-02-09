@@ -12,44 +12,53 @@ import os
 
 #Set Variables for centerline and curvature calculation
 D = 10;   
-W = 150                     #constant width
-deltas = 50;            #spacing of nodes along centerline
-Cf = 0.022              # dimensionless Chezy friction factor
-kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
+W = 100                     #constant width
+deltas = W//2;            #spacing of nodes along centerline
+Cf = 0.005              # dimensionless Chezy friction factor
+kl = 8/(365*24*60*60.0) # migration rate constant (m/s)
 dt = .5*365*24*60*60.0     # time step (s)
 pad= 100                     # dont change
-saved_ts = 20               # which time steps centerline will be saved at
-crdist = W                    # how close  banks get before cutoff in m
-
+saved_ts = 200               # which time steps centerline will be saved at
+crdist = 2*W                    # how close  banks get before cutoff in m
+nit = 1000
 #Set Variables for nonlocal efects
 decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
-bump_scale = 0              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
-cut_thresh = 50            #how many cutoffs to simulate
+bump_scale = 4              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
+cut_thresh = 300            #how many cutoffs to simulate
 
 #Set mode for titles
-mode = "OnlyCurvature"
+mode = "Run27_"
 
 #Set Result Directory
-result_dir = "sample_results/10mpyr_small/" 
+result_dir = "sample_results/27/" 
 
 #Load existing Centerline
-filepath ="sample_data/InitialChannel/InitialCL_10mpyr_small.csv"
+filepath ="sample_data/InitialChannel/InitialCL_init.csv"
 ch= hkp.load_initial_channel(filepath, W, D, deltas)
 
 #Ititalize Channel Belt for migration
-chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], cutoff_dists = [], decay_rate = decay_rate, bump_scale = bump_scale, cut_thresh= cut_thresh)
+chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], cutoff_dists = [], decay_rate = decay_rate, bump_scale = bump_scale, cut_thresh= cut_thresh, sinuosity = [])
+
+chb.plot_channels()
+
+plt.show()
 
 #Migrate
 chb.migrate_cuts(saved_ts,deltas,pad,crdist,Cf,kl,dt) 
 
 #Plot resulting Centerline
 chb.plot_channels()
-plt.title(str(int(chb.cutoff_times[-1]))+ " years at "+ str(kl*(365*24*60*60.0))+ "m/yr")
-plt.savefig(result_dir+mode+"_channels_"+str(cut_thresh)+"cutoffs.png")
-plt.close()
+
+plt.show()
 
 # Save Cutoff Distributions for Clustering Tests #
 chb.cutoff_distributions(int(chb.cutoff_times[-1]), result_dir, mode)
-plt.title(str(cut_thresh)+" cutoffs with original HK model")
-plt.savefig(result_dir + mode+str(cut_thresh)+"_cutoffs_timevsspace.png",bbox_inches='tight', transparent=True)
+plt.title(str(len(chb.cutoff_times))+" cutoffs")
+plt.savefig(result_dir + mode+str(len(chb.cutoff_times))+"_cutoffs_timevsspace.png",bbox_inches='tight', transparent=True)
 plt.close()
+
+#Save Resulting Centerline
+xes = chb.channels[-1].x
+yes = chb.channels[-1].y
+cl = pd.DataFrame({'x': xes, 'y': yes});
+cl.to_csv(result_dir+"InitialCL_init_result.csv", header = False, index = False)

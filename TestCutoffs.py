@@ -9,9 +9,9 @@ import SpaceTime
 import os
 
 #Set location of cutoff distribution to test
-file = "sample_results/10mpyr_small/OnlyCurvature200_cutoffs_distribution.csv"
-W = 150
-result_dir = "sample_results/10mpyr_small/"
+file = "sample_results/25/Run25_300_cutoffs_distribution.csv"
+W = 100
+result_dir = "sample_results/25/"
 #read point pattern as events in space(distance downstream) and time (model years),
 cutoffs = pd.read_csv(file, sep = ',')
 year = int(np.max(cutoffs['time']))
@@ -34,6 +34,8 @@ input()
 Kest = SpaceTime.RipleysKEstimator_spacetime(t_max=year, d_max=length, t_min=0, d_min=0, width = W)
 
 #Run tests that output figures when complete
-Kest(cutoffs= cutoffs, mode = 'K_st', max_search_d= 30,max_search_t = 30)
-plt.savefig(result_dir +"OnlyCurvature"+str(len(cutoffs['time']))+"_cutoffs_spacetimektest.png", transparent=True, bbox_inches = 'tight')
+[D, count]=Kest(cutoffs= cutoffs, mode = 'K_st', max_search_d= 50,max_search_t = 30)
+plt.savefig(result_dir +"Run25_"+str(len(cutoffs['time']))+"_cutoffs_spacetimektest.png", transparent=True, bbox_inches = 'tight')
 plt.close()
+print("D = " + str(D))
+print("count = " + str(count))
