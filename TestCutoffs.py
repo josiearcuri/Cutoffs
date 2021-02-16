@@ -9,17 +9,19 @@ import SpaceTime
 import os
 
 #Set location of cutoff distribution to test
-file = "sample_results/25/Run25_300_cutoffs_distribution.csv"
+file = "sample_results/case2/28/Case2_Run28_300_cutoffs_distribution.csv"
 W = 100
-result_dir = "sample_results/25/"
+result_dir = "sample_results/case2/28/"
+
 #read point pattern as events in space(distance downstream) and time (model years),
-cutoffs = pd.read_csv(file, sep = ',')
+cutoffs = pd.read_csv(file, sep = ',', nrows = 300)
 year = int(np.max(cutoffs['time']))
 length = int(np.max(cutoffs['downstream_distance']))
-
+print(length)
+print(year)
 #Check if data fits test criteria/boundary effects small enough to ignore
 ##print("Last cutoff occured at " + str(year)+ " years")
-if year >= 50**2:
+if year >= 30**2:
     print("time span is sufficently large for statistical tests")
 else:
     print("Warning: model run long enough to only search over "+str(int(np.sqrt(year)))+" year windows")
@@ -35,7 +37,9 @@ Kest = SpaceTime.RipleysKEstimator_spacetime(t_max=year, d_max=length, t_min=0, 
 
 #Run tests that output figures when complete
 [D, count]=Kest(cutoffs= cutoffs, mode = 'K_st', max_search_d= 50,max_search_t = 30)
-plt.savefig(result_dir +"Run25_"+str(len(cutoffs['time']))+"_cutoffs_spacetimektest.png", transparent=True, bbox_inches = 'tight')
-plt.close()
+
+plt.savefig(result_dir +"Case2_Run28_"+str(len(cutoffs['time']))+"_cutoffs_spacetimektest.png", transparent=False, bbox_inches = 'tight')
+plt.show()
+#plt.close()
 print("D = " + str(D))
 print("count = " + str(count))

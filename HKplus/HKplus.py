@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import time, sys
+import numba 
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
@@ -56,7 +57,7 @@ class Channel:
 
 class Cutoff:
     """class for Cutoff objects"""
-    def __init__(self,x,y,W,dist, time, cut_len):
+    def __init__(self,x,y,W,dist, time, cut_len, rad):
         """initialize Cutoff object
         x, y,  - coordinates of centerline
         W - channel width
@@ -64,9 +65,10 @@ class Cutoff:
         self.x = x
         self.y = y
         self.W = W
-        self.dist = np.max(dist)
+        self.dist = dist
         self.time = time
         self.cut_len = cut_len
+        self.radius = rad
         
 class ChannelBelt:
     """class for ChannelBelt objects"""
@@ -125,21 +127,25 @@ class ChannelBelt:
             update_progress(itn/nit, start_time)
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
             klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
+            curv = compute_curvature(x,y)#get curvature of bends before cutoffs happen
             x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
-            x,y,xc,yc,cut_dist, cut_len = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
+            x,y,xc,yc,cut_dist, cut_len, ind1, ind2 = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             
+            Sin = get_sinuosity(x,s)
             if len(xc)>0: # save cutoff data
-                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len) # create cutoff object
+                rad = get_radii(curv, ind1, ind2, W)
+                cutoff = Cutoff(xc,yc,W,cut_dist[0],last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len[0], rad) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
                 self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
                 self.cutoffs.append(cutoff)
             # saving centerlines:
-            if np.mod(itn,saved_ts)==0:
+            if np.mod(itn,saved_ts)==0 or itn == nit-1:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
+                self.sinuosity.append(Sin[0])
 
     def migrate_cuts(self,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
         """function for computing migration rates along channel centerlines and moving them, limited by number of cutoffs the channel experiences
@@ -172,27 +178,32 @@ class ChannelBelt:
         ne = np.zeros_like(x) #array to keep track of nonlocal effects
         ymax = self.bump_scale*kl*2
         itn = 0
-        while len(self.cutoffs)<self.cut_thresh: # main l oop
+        
+        while len(self.cutoffs)<self.cut_thresh: # main loop
             itn = itn+1
             update_progress(len(self.cutoffs)/self.cut_thresh, start_time) 
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
+            curv = compute_curvature(x,y)
             klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
             x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
-            x,y,xc,yc,cut_dist, cut_len = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
+            x,y,xc,yc,cut_dist, cut_len,ind1, ind2 = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             Sin = get_sinuosity(x,s)
             if len(xc)>0: # save cutoff data
-                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len) # create cutoff object
+                rad = get_radii(curv, ind1, ind2, W)
+                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len, rad) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
                 self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
                 self.cutoffs.append(cutoff)
+
             # saving centerlines:
             if np.mod(itn,saved_ts)==0 or len(self.cutoffs)>=self.cut_thresh:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
-                #self.sinuosity.append(Sin)
+                self.sinuosity.append(Sin[0])
+
     def plot_channels(self):
         cot = np.array(self.cutoff_times)
         sclt = np.array(self.cl_times)
@@ -255,11 +266,11 @@ class ChannelBelt:
         mode - for plotting - "OnlyCurvature or "NonlocalEffects"
         """
         #pull cutoff locations, downstrem distance, time from channel belt as a pandas dataframe
-        distances = [i.dist for i in self.cutoffs]
+        distances = [i.dist[0] for i in self.cutoffs]
         times = [i.time for i in self.cutoffs]
-        x_location = [i.x for i in self.cutoffs]
-        y_location = [i.y for i in self.cutoffs]
-        cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'x': x_location, 'y': y_location})
+        radius = [i.radius for i in self.cutoffs]
+        cutlen = [i.cut_len[0] for i in self.cutoffs]
+        cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'radius':radius, 'cutlen': cutlen})
         
         #save distribution to csv
         newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
@@ -306,23 +317,22 @@ def migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     y = y - R1*dx_ds*dt 
     return x,y
 
-def generate_initial_channel(W,D,deltas,pad,n_bends):
+def generate_initial_channel(W,D,deltas,pad):
     """generate straight Channel object with some noise added that can serve
     as input for initializing a ChannelBelt object
     from MeanderPy
     W - channel width
     D - channel depth
     deltas - distance between nodes on centerline
-    pad - padding (number of nodepoints along centerline)
-    n_bends - approximate number of bends to be simulated"""
-    noisy_len = n_bends*10*W/2.0 # length of noisy part of initial centerline
+    pad - padding (number of nodepoints along centerline)"""
+    cl_length = (50**2)*W/2.0# length of noisy part of initial centerline
     pad1 = pad//10
     #padding at upstream end can be shorter than padding on downstream end
     if pad1<5:
         pad1 = 5
-    x = np.linspace(0, noisy_len+(pad+pad1)*deltas, int(noisy_len/deltas+pad+pad1)+1) # x coordinate
-    y = 10.0 * (2*np.random.random_sample(int(noisy_len/deltas)+1,)-1)
-    y = np.hstack((np.zeros((pad1),),y,np.zeros((pad),))) # y coordinate
+    x = np.linspace(0, cl_length+(2*pad1)*deltas, int(cl_length/deltas+(2*pad1))+1) # x coordinate
+    y = 10.0 * (2*np.random.random_sample(int(cl_length/deltas)+1,)-1)
+    y = np.hstack((np.zeros((pad1),),y,np.zeros((pad1),))) # y coordinate
     return Channel(x,y,W,D)
 
 def load_initial_channel(filepath, W, D, deltas):
@@ -383,6 +393,7 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
     return Channel(points_fitted[0],points_fitted[1],W,D)
 
 
+@numba.jit(nopython=True)
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
     """compute migration rate as weighted sum of upstream curvatures
     pad - padding (number of nodepoints along centerline)
@@ -487,20 +498,23 @@ def cut_off_cutoffs(x,y,s,crdist,deltas):
     cut_len = []
     max_curv = []
     ind1, ind2 = find_cutoffs(x,y,crdist,deltas) # initial check for cutoffs
-    
+    ind1_save = []
+    ind2_save = []
+    if len(ind1)>0:
+        ind1_save = ind1[0]
+        ind2_save = ind2[0]
     while len(ind1)>0:
         xc.append(x[ind1[0]:ind2[0]+1]) # x coordinates of cutoff
         yc.append(y[ind1[0]:ind2[0]+1]) # y coordinates of cutoff
         dx, dy, ds, s_little = compute_derivatives(x[:ind1[0]+1],y[:ind1[0]+1])#compute derivatives upstream of cutoff
         cl_dist.append(s_little[-1]) #cutoff distance downstream
-        #max_curv = np.max(compute_curvature(x[ind1[0]:ind2[0]+1],y[ind1[0]:ind2[0]+1]))  #maximum curvature along cutoff bend
         dx, dy, ds, s_between = compute_derivatives(xc[-1],yc[-1])#compute derivatives along cutoff bend
         cut_len.append(s_between[-1]) #length removed by cutoff
+    
         x = np.hstack((x[:ind1[0]+1],x[ind2[0]:])) # x coordinates after cutoff
         y = np.hstack((y[:ind1[0]+1],y[ind2[0]:])) # y coordinates after cutoff
-        
         ind1, ind2 = find_cutoffs(x,y,crdist,deltas) 
-    return x,y,xc,yc, cl_dist, cut_len
+    return x,y,xc,yc, cl_dist, cut_len, ind1_save, ind2_save
 
 def get_channel_banks(x,y,W):
     """function for finding coordinates of channel banks, given a centerline and a channel width
@@ -535,16 +549,16 @@ def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .05
     ne_new = ne_new*np.exp(-decay)
     ### remove ne that are less than some threshold, default = .05 (1/20 of background rate)
     ne_new[np.where(ne_new<thresh)] = 0
-
-    for k in range(len(cut_dist)): #for each cutoff, add new NE
+    if scale>1:
+        for k in range(len(cut_dist)): #for each cutoff, add new NE
 
         #gaussian bump
-        mu = cut_dist[k]
+            mu = cut_dist[k]
 
-        sigma = (cut_len[k]*1.19)/2 # want the whole bump within 1.19*cut_len
+            sigma = (cut_len[k]*1.19)/2 # want the whole bump within 1.19*cut_len
 
-        y_bump = norm.pdf(s, mu, sigma)
-        ne_new = ne_new + ((scale-1)*y_bump/np.max(y_bump))
+            y_bump = norm.pdf(s, mu, sigma)
+            ne_new = ne_new + ((scale-1)*y_bump/np.max(y_bump))
   
     return ne_new
 
@@ -552,4 +566,21 @@ def get_sinuosity(x,s):
     v_len = x[-1]-x[0]
     Sin = s[-1]/v_len
     return Sin
+
+def plot_sinuosity(time, sin):
+    fig, ax = plt.subplots(1,1)
+    ax.plot(range(0,len(sin)), sin, 'k', label = "mean S = "+ str(np.mean(sin)))
+    plt.legend()
+    ax.set_title("Sinuosity")
+    return fig
+def get_radii(c, ind1, ind2, W):
+    #unsigned curvature
+    radii = abs(c)
+    # Width divided by maximum dimensionless curvature of cutoff bend
+    max_rad = W/(np.max(radii[ind1:ind2])*W)
+               
+    return max_rad
+
+    
+
        
