@@ -10,12 +10,12 @@ import pandas as pd
 
 #Set Variables for centerline and curvature calculation
 
-D=5.3
-W = 200                   #constant width (m)
+D=3.4
+W = 100                   #constant width (m)
 deltas = W//2;            #spacing of nodes along centerline (m)
-nit = 100              # number of iterations
+nit = 500              # number of iterations
 Cf = .005            # dimensionless Chezy friction factor
-kl = 20/(365*24*60*60.0) # migration rate constant (m/s)
+kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
 dt = 1*365*24*60*60.0     # time step (s)
 pad= 200                     # dont change
 saved_ts = 20               # which time steps centerline will be saved at
@@ -32,7 +32,7 @@ result_dir = "sample_data/InitialChannel/" ##change this to wherever you want to
 
 #Load Existing Centerline
 
-filepath ="sample_data/InitialChannel/InitialCL_200width.csv"
+filepath ="sample_data/InitialChannel/InitialCL_init.csv"
 ch= hkp.load_initial_channel(filepath, W, D, deltas)
 
 #Initialize Channel Belt for Migration
@@ -51,12 +51,8 @@ chb.plot_channels()
 plt.title(str(int(nit*dt/(365*24*60*60.0)))+ " years at "+ str(kl*(365*24*60*60.0))+ "m/yr")
 plt.show()
 
-#sinseries = pd.DataFrame({'time':times, 'sinuosity': sins});
-#sinseries.to_csv(result_dir+"InitialCL_"+name+"sinseries"+".csv", header = True, index = False)
 
 hkp.plot_sinuosity(chb.cl_times, chb.sinuosity)
-plt.show()
-hkp.plot_radii(np.asarray(chb.radii), W)
 plt.show()
 
 #Save Resulting Centerline
@@ -64,5 +60,5 @@ xes = chb.channels[-1].x
 yes = chb.channels[-1].y
 cl = pd.DataFrame({'x': xes, 'y': yes});
 
-cl.to_csv("sample_data/InitialChannel/InitialCL_200width.csv", header = False, index = False)
+#cl.to_csv("sample_data/InitialChannel/InitialCL_200width.csv", header = False, index = False)
 

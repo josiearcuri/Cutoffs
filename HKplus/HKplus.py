@@ -145,7 +145,7 @@ class ChannelBelt:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
-                self.sinuosity.append(Sin[0])
+                self.sinuosity.append(Sin)
 
     def migrate_cuts(self,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
         """function for computing migration rates along channel centerlines and moving them, limited by number of cutoffs the channel experiences
@@ -325,7 +325,7 @@ def generate_initial_channel(W,D,deltas,pad):
     D - channel depth
     deltas - distance between nodes on centerline
     pad - padding (number of nodepoints along centerline)"""
-    cl_length = (50**2)*W/2.0# length of noisy part of initial centerline
+    cl_length = (50**2)*W/10.0# length of noisy part of initial centerline
     pad1 = pad//10
     #padding at upstream end can be shorter than padding on downstream end
     if pad1<5:

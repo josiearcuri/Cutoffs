@@ -13,12 +13,12 @@ import pandas as pd
 D=3.4
 W = 100                     #constant width
 deltas = W//2;            #spacing of nodes along centerline
-nit = 2000              # number of iterations
+nit = 1000              # number of iterations
 Cf = 0.005              # dimensionless Chezy friction factor
-kl = 20/(365*24*60*60.0) # migration rate constant (m/s)
+kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
 dt = 2*365*24*60*60.0     # time step (s)
 pad= 200                     # dont change
-saved_ts = 200              # which time steps centerline will be saved at
+saved_ts = 50              # which time steps centerline will be saved at
 crdist = 2*W                    # how close  banks get before cutoff in m
 
 
@@ -31,7 +31,7 @@ cut_thresh = 100            #how many cutoffs to simulate, arbitrary if running 
 #Set Result Directory
 result_dir = "sample_data/InitialChannel/" ##change this to wherever you want to save your results
 
-name= "100width"
+name= "init"
 
 
 #Initiate Channel Object
