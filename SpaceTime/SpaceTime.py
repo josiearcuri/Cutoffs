@@ -6,7 +6,7 @@ import itertools as it
 class of functions to statistically compare cutoff 2-d spatiotemporal point processes to simulated complete spatial randomness.  This is an implementation of Ripley's K function for 2-D space time.
 """
 class RipleysKEstimator_spacetime:
-    def __init__(self,t_max, d_max, t_min, d_min, width):
+    def __init__(self,t_max, d_max, t_min, d_min, width, dt):
         """initialize estimator
         t_max - int, last year of model iteration
         d_max - int, longest centerline length
@@ -17,7 +17,8 @@ class RipleysKEstimator_spacetime:
         self.d_max = d_max # max centerline length
         self.t_min = t_min # 0
         self.d_min = d_min # 0
-        self.width = width  #150
+        self.width = width 
+        self.dt = dt
         
 
     def __call__(self, cutoffs, mode, max_search_d, max_search_t):
@@ -145,7 +146,7 @@ class RipleysKEstimator_spacetime:
         rng = np.random.default_rng(seed = 42)
         data = cutoffs[['downstream_distance', 'time']].to_numpy() 
         num_samples = len(cutoffs.time)
-        r_time = np.linspace(1,max_search_t, max_search_t)
+        r_time = np.linspace(self.dt,self.dt*max_search_t, max_search_t)
         r_space = np.linspace(self.width,self.width*max_search_d, max_search_d)
         mc_d = np.zeros((len(r_space), nit))
         mc_t = np.zeros((len(r_time), nit))
@@ -185,13 +186,17 @@ class RipleysKEstimator_spacetime:
             #significantly more aggregated than upper mc env, and
             clustered = (stat_dt>upper_dt)
             regular =  (stat_dt<lower_dt)
-            sig_mask = (clustered+regular)*(dependent_clustered+dependent_regular)
+            sig_mask = (dependent_clustered+dependent_regular)*(clustered+regular)
          
-            normalized = (stat_dt-middle_dt)/(4*np.multiply(r_space.reshape(len(r_space),1),r_time.reshape(1,len(r_time))))
-            D = np.sum(normalized*sig_mask)
-            self.plot_st(r_space, r_time, normalized, sig_mask, D)
+            normalized = (stat_dt)/(4*np.multiply(r_space.reshape(len(r_space),1),r_time.reshape(1,len(r_time))))-1
             
-            return [D, np.count_nonzero(normalized*sig_mask)]
+            sumclust= np.sum(normalized*(normalized>0))
+    
+            sumreg= np.sum(normalized*(normalized<0))
+        
+            self.plot_st(r_space, r_time, normalized, sig_mask, np.sum(normalized))#
+            
+            return [sumclust, sumreg, np.count_nonzero(normalized*sig_mask)]
         else:
             #monte carlo envelope
             upper_d = np.ma.max(mc_d, axis = 1)/(r_space*2)-1
@@ -218,23 +223,23 @@ class RipleysKEstimator_spacetime:
         cmap = plt.get_cmap('PiYG')
         
         #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
-        im =ax.pcolormesh(np.swapaxes(normalized,0,1), cmap = cmap,vmin = -5, vmax = 5)
+        im =ax.pcolormesh(np.swapaxes(normalized,0,1), cmap = cmap,vmin = -2, vmax = 2)
         #plt.pcolor(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1),0), edgecolors='k', linewidths=4, alpha=0.)
         im2 =ax.pcolormesh(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1)/np.swapaxes(normalized*sig_mask,0,1),0), zorder=2, linewidths = .01,facecolor='none', edgecolors='k',cmap='gray')
         plt.title('D ='+str(D), pad = 10)
         cbar = ax.figure.colorbar(im, ax=ax)#, ticks = [-2,-1,0,1,2])
-        cbar.ax.set_ylabel("[K-null]/[d*t]", va="bottom", rotation=-90)
+        cbar.ax.set_ylabel("K/[4*d*t] - 1", va="bottom", rotation=-90)
         #cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
-        ax.set_ylim(bottom=0, top=max(r_time))
+        ax.set_ylim(bottom=0, top=max(r_time/self.dt))
         ax.set_xlim(left=0, right=max(r_space/self.width))
         ax.set_ylabel('time window (years)')
         ax.set_xlabel('search distance (ch-w)')
-        ax.set_xticks(r_space[1::2]/self.width, minor=True)
-        ax.set_yticks(r_time[1::2], minor=True)
-        ax.set_xticks(r_space[1::2]/self.width-1)
-        ax.set_yticks(r_time[1::2] -1)
+        ax.set_xticks(r_space/self.width, minor=True)
+        ax.set_yticks(r_time/self.dt, minor=True)
+        ax.set_xticks(r_space[1::2]/self.width-.5)
+        ax.set_yticks(r_time[1::2]/self.dt-.5)
         ax.set_yticklabels((r_time[1::2]).astype(int))
-        ax.set_xticklabels((r_space[1::2]/self.width).astype(int))#, rotation='vertical')
+        ax.set_xticklabels((r_space[1::2]/(self.width)).astype(int))#, rotation='vertical')
         
         ax.tick_params(axis = 'both', which = 'major', top =False, bottom = False, left = False, right = False)
         #ax.grid(True, which='minor', color='k', linewidth=.1)
