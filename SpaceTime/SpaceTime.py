@@ -21,11 +21,11 @@ class RipleysKEstimator_spacetime:
         self.dt = dt
         
 
-    def __call__(self, cutoffs, mode, max_search_d, max_search_t):
+    def __call__(self, cutoffs, mode, max_search_d, max_search_t, plotornot):
         """
         perform main function
         """
-        return self.mc_env(cutoffs = cutoffs, nit=99, mode = mode, max_search_d=max_search_d, max_search_t=max_search_t)
+        return self.mc_env(cutoffs = cutoffs, nit=99, mode = mode, max_search_d=max_search_d, max_search_t=max_search_t, plotornot=plotornot)
     
     def _pairwise_diffs(self, data):
         """
@@ -34,13 +34,15 @@ class RipleysKEstimator_spacetime:
         """
         npts = len(data)
         diff = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double) 
+        datai = np.zeros(shape=(npts * (npts - 1) // 2), dtype=np.double) 
         k = 0
         for i in range(npts - 1):
             for j in range(i+1, npts):
                 diff[k] = abs(data[i] - data[j])
+                datai[k] = data[i]
                 k += 1
-        return diff
-    def _near_neigh(self, data):
+        return datai, diff
+    def _near_neigh(self,data):
         """
         compute array of distance between every point and its nearest neighbor in 1D
         data - 1-D array of deltas, space or time
@@ -55,7 +57,20 @@ class RipleysKEstimator_spacetime:
             diff[i] = np.min(abs(data[i] - others))
         return diff
     
-    def evaluate(self, data, dist_space, dist_time, mode):
+    
+    def _weights(self, xi, yi, diff_d, diff_t):
+        """
+        compute weights for edge effect correction. one over intersecting area
+        """
+        npts = 500
+        weights = np.ones(shape=(npts * (npts - 1) // 2), dtype=np.double) 
+        weights[(((self.t_max- yi) - diff_t )<= 0)] =2
+        weights[((yi-diff_t) <= 0)] =2
+        weights[(((self.d_max- xi) - diff_d )<= 0)] =2
+        weights[((xi-diff_d) <= 0)] =2
+     
+        return weights      
+    def _evaluate(self, data, dist_space, dist_time, mode):
         """
         
         INPUTS
@@ -113,14 +128,14 @@ class RipleysKEstimator_spacetime:
             """
             number of additional events near other events on time scales of dist_time and spatial scales of dist_space, 2 1-d plots
             """
-            deltaspace = self._pairwise_diffs(data[:,0])
-            deltatime = self._pairwise_diffs(data[:,1])
+            xi, deltaspace = self._pairwise_diffs(data[:,0])
+            yi, deltatime = self._pairwise_diffs(data[:,1])
             for i in range(len(dist_space)):
                 d_indicator = (deltaspace <=dist_space[i])
-                stat_d[i] = (d_indicator).sum()
+                stat_d[i] = (d_indicator*xi).sum()
             for i in range(len(dist_time)):
                 t_indicator = (deltatime<=dist_time[i])
-                stat_t[i] = (t_indicator).sum()
+                stat_t[i] = (t_indicator*yi).sum()
             stat_t = 2*(self.t_max*stat_t/(npts*(npts-1)))
             stat_d = 2*(self.d_max*stat_d/((npts-1)*npts))
             return (stat_d, stat_t)
@@ -128,18 +143,18 @@ class RipleysKEstimator_spacetime:
             """
             number of additional events near other events given sepcific search distances and durations. 2D heatmap
             """
-            areas = np.ones_like(stat_dt)
-            deltaspace = self._pairwise_diffs(data[:,0])
-            deltatime = self._pairwise_diffs(data[:,1])
+            xi, deltaspace = self._pairwise_diffs(data[:,0])
+            yi, deltatime = self._pairwise_diffs(data[:,1])
+            weights = self._weights(xi, yi, deltaspace, deltatime)
             for x in range(len(dist_space)):
                 for t in range(len(dist_time)):
                     dt_indicator = (deltatime<=dist_time[t])&(deltaspace <=dist_space[x])
-                    stat_dt[x,t] = (dt_indicator).sum()
-            stat_dt = 2*(self.d_max*self.t_max*stat_dt)/(npts*(npts-1))
+                    stat_dt[x,t] = (dt_indicator*weights).sum()
+            stat_dt = (self.d_max*self.t_max*stat_dt)/(npts*(npts-1))
            
             return(stat_dt)
          
-    def mc_env(self,cutoffs, nit, mode, max_search_d, max_search_t): 
+    def mc_env(self,cutoffs, nit, mode, max_search_d, max_search_t, plotornot): 
         """
         generate random distibutions in same space + time ranges as data
         """
@@ -156,18 +171,18 @@ class RipleysKEstimator_spacetime:
             z[:,0] = rng.random(size = num_samples)*self.d_max
             z[:,1] = rng.random(size = num_samples)*self.t_max
 
-            k_dt = self.evaluate(data=z, dist_time=r_time, dist_space=r_space, mode='K_st') 
+            k_dt = self._evaluate(data=z, dist_time=r_time, dist_space=r_space, mode='K_st') 
             mc_dt[:, :, i]= k_dt
 
-            k_d, k_t = self.evaluate(data=z, dist_time=r_time, dist_space=r_space, mode='K') 
+            k_d, k_t = self._evaluate(data=z, dist_time=r_time, dist_space=r_space, mode='K') 
             mc_d[:,i] = k_d
             mc_t[:,i] = k_t
 
     
         if mode == 'K_st':
             ## monte carlo envelope - limits on probable randomness
-            upper_dt = np.ma.max(mc_dt, axis = 2)
-            lower_dt = np.ma.min(mc_dt, axis = 2)
+            upper_dt = np.percentile(mc_dt, 95, axis = 2)
+            lower_dt = np.percentile(mc_dt, 5, axis = 2)
             middle_dt = np.ma.mean(mc_dt, axis = 2)
             
             upper_d = np.ma.max(mc_d, axis = 1)
@@ -175,28 +190,27 @@ class RipleysKEstimator_spacetime:
             upper_t = np.ma.max(mc_t, axis = 1)
             lower_t = np.ma.min(mc_t, axis = 1)
 
-
+             #K values
+            stat_d, stat_t = self._evaluate(data=data, dist_time=r_time, dist_space=r_space, mode='K')
             #space-time K
-            stat_dt = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
-            dependent_clustered = (stat_dt>np.multiply(upper_d.reshape(len(upper_d),1),upper_t))
-            dependent_regular = (stat_dt<np.multiply(lower_d.reshape(len(lower_d),1),lower_t))
+            stat_dt = self._evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
+            #dependent_clustered = (stat_dt>np.multiply(upper_d.reshape(len(upper_d),1),upper_t))
+            #dependent_regular = (stat_dt<np.multiply(lower_d.reshape(len(lower_d),1),lower_t))
             
 
             #locations of statictically nonrandom, dependent K values
             #significantly more aggregated than upper mc env, and
             clustered = (stat_dt>upper_dt)
             regular =  (stat_dt<lower_dt)
-            sig_mask = (dependent_clustered+dependent_regular)*(clustered+regular)
-         
-            normalized = (stat_dt)/(4*np.multiply(r_space.reshape(len(r_space),1),r_time.reshape(1,len(r_time))))-1
-            
-            sumclust= np.sum(normalized*(normalized>0))
-    
-            sumreg= np.sum(normalized*(normalized<0))
+            sig_mask = (clustered+regular)
+            #stat_d_times_stat_t = np.multiply(stat_d.reshape(len(stat_d),1),stat_t.reshape(1,len(stat_t)))
+            normalized = stat_dt-middle_dt
         
-            self.plot_st(r_space, r_time, normalized, sig_mask, np.sum(normalized))#
+            if plotornot == 1:
+    
+                self.plot_st(r_space, r_time, normalized, sig_mask, np.sum(normalized))#
             
-            return [sumclust, sumreg, np.count_nonzero(normalized*sig_mask)]
+            return [np.sum(normalized), np.sum(normalized*sig_mask)]
         else:
             #monte carlo envelope
             upper_d = np.ma.max(mc_d, axis = 1)/(r_space*2)-1
@@ -209,7 +223,7 @@ class RipleysKEstimator_spacetime:
             middle_t = np.ma.mean(mc_t, axis = 1)/(r_time*2)-1
         
             #K values
-            stat_d, stat_t = self.evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
+            stat_d, stat_t = self._evaluate(data=data, dist_time=r_time, dist_space=r_space, mode=mode)
             
             #normalize to what's expected under poisson
             stat_d = (stat_d)/(r_space*2) -1
@@ -221,25 +235,25 @@ class RipleysKEstimator_spacetime:
         fig,ax = plt.subplots(figsize = (8,4))
         
         cmap = plt.get_cmap('PiYG')
-        
-        #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower',vmin = -2, vmax = 2, cmap = cmap)
-        im =ax.pcolormesh(np.swapaxes(normalized,0,1), cmap = cmap,vmin = -2, vmax = 2)
+        vscale = np.max(abs(normalized))
+        #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower' cmap = cmap)
+        im =ax.pcolormesh(np.swapaxes(normalized,0,1), cmap = cmap,vmin = -vscale, vmax = vscale,)
         #plt.pcolor(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1),0), edgecolors='k', linewidths=4, alpha=0.)
         im2 =ax.pcolormesh(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1)/np.swapaxes(normalized*sig_mask,0,1),0), zorder=2, linewidths = .01,facecolor='none', edgecolors='k',cmap='gray')
         plt.title('D ='+str(D), pad = 10)
         cbar = ax.figure.colorbar(im, ax=ax)#, ticks = [-2,-1,0,1,2])
-        cbar.ax.set_ylabel("K/[4*d*t] - 1", va="bottom", rotation=-90)
+        cbar.ax.set_ylabel("D(d,t) = K_hat(d,t)-K(d,t)", va="bottom", rotation=-90)
         #cbar.ax.set_yticklabels(['<-2', '-1', '0','1','>2']) 
         ax.set_ylim(bottom=0, top=max(r_time/self.dt))
         ax.set_xlim(left=0, right=max(r_space/self.width))
         ax.set_ylabel('time window (years)')
         ax.set_xlabel('search distance (ch-w)')
-        ax.set_xticks(r_space/self.width, minor=True)
+        ax.set_xticks(r_space/(self.width), minor=True)
         ax.set_yticks(r_time/self.dt, minor=True)
-        ax.set_xticks(r_space[1::2]/self.width-.5)
-        ax.set_yticks(r_time[1::2]/self.dt-.5)
-        ax.set_yticklabels((r_time[1::2]).astype(int))
-        ax.set_xticklabels((r_space[1::2]/(self.width)).astype(int))#, rotation='vertical')
+        ax.set_xticks(r_space/self.width-.5)
+        ax.set_yticks(r_time/self.dt-.5)
+        ax.set_yticklabels((r_time).astype(int))
+        ax.set_xticklabels((r_space/100).astype(int))#, rotation='vertical')
         
         ax.tick_params(axis = 'both', which = 'major', top =False, bottom = False, left = False, right = False)
         #ax.grid(True, which='minor', color='k', linewidth=.1)
