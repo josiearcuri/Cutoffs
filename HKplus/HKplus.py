@@ -43,7 +43,7 @@ def update_progress(progress, start_time):
 
 class Channel:
     """class for Channel objects"""
-    def __init__(self,x,y,W,D):
+    def __init__(self,x,y,W,D, MR, DS):
         """initialize Channel object
         x, y, z  - coordinates of centerline
         W - channel width
@@ -52,6 +52,8 @@ class Channel:
         self.y = y
         self.W = W
         self.D = D
+        self.MR = MR
+        self.DS = DS
 
         
 
@@ -122,13 +124,14 @@ class ChannelBelt:
         omega = -1.0 # constant in curvature calculation (Howard and Knutson, 1984)
         gamma = 2.5 # from Ikeda et al., 1981 and Howard and Knutson, 1984
         ne = np.zeros_like(x) #array to keep track of nonlocal effects
-
+        MR = 0
+        DS = 0 
         for itn in range(nit): # main loop
             update_progress(itn/nit, start_time)
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
             klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
             curv = compute_curvature(x,y)#get curvature of bends before cutoffs happen
-            x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+            x, y, R1 = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
             x,y,xc,yc,cut_dist, cut_len, ind1, ind2 = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             
@@ -142,7 +145,7 @@ class ChannelBelt:
                 self.cutoffs.append(cutoff)
             # saving centerlines:
             if np.mod(itn,saved_ts)==0 or itn == nit-1:
-                channel = Channel(x,y,W,D) # create channel object, save year
+                channel = Channel(x,y,W,D, MR, DS) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
                 self.sinuosity.append(Sin)
@@ -185,7 +188,8 @@ class ChannelBelt:
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
             curv = compute_curvature(x,y)
             klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
-            x, y = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+            x, y, R1  = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+            MR, DS = segmented_MR(curv, R1, ds)
             x,y,xc,yc,cut_dist, cut_len,ind1, ind2 = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             Sin = get_sinuosity(x,s)
@@ -199,10 +203,61 @@ class ChannelBelt:
 
             # saving centerlines:
             if np.mod(itn,saved_ts)==0 or len(self.cutoffs)>=self.cut_thresh:
-                channel = Channel(x,y,W,D) # create channel object, save year
+                channel = Channel(x,y,W,D,MR, DS) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
                 self.sinuosity.append(Sin)
+    
+    def migrate_bendtracking(self,saved_ts,deltas,pad, crdist,Cf,kl,dt,dens=1000):
+        """function for computing migration rates along channel centerlines and moving them, limited by number of cutoffs the channel experiences
+        inputs:
+        saved_ts - which time steps will be saved
+        deltas - distance between nodes on centerline
+        pad - padding for upstream bc (number of nodepoints along centerline)
+        crdist - threshold distance at which cutoffs occur
+        Cf - dimensionless Chezy friction factor
+        kl - migration rate constant (m/s)
+        dt - time step (s)"""
+        start_time = time.time()
+
+        channel = self.channels[-1] # first channel is the same as last channel of input
+        x = channel.x; y = channel.y; W = channel.W; D = channel.D; 
+        
+        k = 1.0 # constant in HK equation
+        xc = [] # initialize cutoff coordinates
+        yc = []
+        cut_dist = []# initialize cutoff distance ds array
+        cut_len = []# initialize cutoff length removal array
+        # determine age of last channel:
+        if len(self.cl_times)>0:
+            last_cl_time = self.cl_times[-1]
+        else:
+            last_cl_time = 0
+        dx, dy, ds, s = compute_derivatives(x,y)
+        omega = -1.0 # constant in curvature calculation (Howard and Knutson, 1984)
+        gamma = 2.5 # from Ikeda et al., 1981 and Howard and Knutson, 1984
+        ne = np.zeros_like(x) #array to keep track of nonlocal effects
+        ymax = self.bump_scale*kl*2
+        itn = 0
+        
+        while len(self.cutoffs)<self.cut_thresh: # main loop
+            itn = itn+1
+            update_progress(len(self.cutoffs)/self.cut_thresh, start_time) 
+            ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
+            curv = compute_curvature(x,y)
+            klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
+            x, y, R1  = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+            s_old = s
+            x,y,xc,yc,cut_dist, cut_len,ind1, ind2 = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
+            x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
+
+            # saving centerlines:
+            if np.mod(itn,saved_ts)==0 or len(self.cutoffs)>=self.cut_thresh:
+                MR, DS = segmented_MR(curv, R1, s_old)
+                channel = Channel(x,y,W,D,MR,DS) # create channel object, save year
+                self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
+                self.channels.append(channel)
+                
 
     def plot_channels(self):
         cot = np.array(self.cutoff_times)
@@ -276,6 +331,16 @@ class ChannelBelt:
         newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
         plot_cuts(cuts,self.channels[-1].W, filepath)
         return cuts
+    def MR_time(self):
+        MR = [[bend for bend in i.MR] for i in self.channels] 
+        DownS = [i.DS[1:] for i in self.channels]
+        UpS = [i.DS[:-1] for i in self.channels]
+        clt = np.array(self.cl_times)
+        
+        MRdf= pd.DataFrame(MR)
+        print(MRdf.head())
+
+        
 def plot_cuts(cuts,W, filepath):
     fig = plt.figure(figsize = (5,5))
     plt.rcParams.update({'font.size': 10})
@@ -315,7 +380,7 @@ def migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     # move x and y coordinates:
     x = x + R1*dy_ds*dt  
     y = y - R1*dx_ds*dt 
-    return x,y
+    return x,y, R1
 
 def generate_initial_channel(W,D,deltas,pad):
     """generate straight Channel object with some noise added that can serve
@@ -333,7 +398,9 @@ def generate_initial_channel(W,D,deltas,pad):
     x = np.linspace(0, cl_length+(2*pad1)*deltas, int(cl_length/deltas+(2*pad1))+1) # x coordinate
     y = 10.0 * (2*np.random.random_sample(int(cl_length/deltas)+1,)-1)
     y = np.hstack((np.zeros((pad1),),y,np.zeros((pad1),))) # y coordinate
-    return Channel(x,y,W,D)
+    MR = np.zeros_like(x)
+    DS = MR.copy()
+    return Channel(x,y,W,D, MR, DS)
 
 def load_initial_channel(filepath, W, D, deltas):
     """generate initial channel from centerline csv that can serve
@@ -345,7 +412,9 @@ def load_initial_channel(filepath, W, D, deltas):
     df = pd.read_csv(filepath, sep = ',', header=None).values
     x = df[:,0]
     y = df[:,1]
-    return Channel(x,y,W,D)
+    MR = np.zeros_like(x)
+    DS = MR.copy()
+    return Channel(x,y,W,D, MR, DS)
 def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_corr= -1):
     """function for creating a MeanderPy Channel object from an externally-sourced centerline in .csv file format.
         inputs:
@@ -373,7 +442,7 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
         
     #average over widths to get a reach-constant width scalar
     W = np.mean(varlist[1][:,0])*30
-    print(W)
+
     ## water depth scalar#
     D = D_in  
     # Linear length along the line, add a zero for first point:
@@ -389,7 +458,9 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
     
     ## z-dim array, interpolated with constant slope along points of centerline.  assumes centerline points are equidistantly placed along original centerline. 
     #deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
-    return Channel(points_fitted[0],points_fitted[1],W,D)
+    MR = np.zeros_like(point_fitted[0])
+    DS = MR.copy()
+    return Channel(points_fitted[0],points_fitted[1],W,D, MR, DS)
 
 @numba.jit(nopython=True)
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
@@ -627,5 +698,34 @@ def scatter_hist(x, y, ax, ax_histx, ax_histy):
     ybins = np.arange(0, ylim + ybinwidth, ybinwidth)
     ax_histx.hist(x, bins=xbins)
     ax_histy.hist(y, bins=ybins, orientation='horizontal')
+def segmented_MR(curv, R1, s, n=90):
+    """
+    approximate a bend-by-bend nth percentile lateral migration rate. 
+    
+    Inputs:
+    curve: array of curvature for every node along the centerline.
+    R1: array of already computed migration distances for every node along the centerline.
+    ds: array of cumulative distance downstream between nodes.
+    n: percentile
+    
+    Output:
+    MR: array of nth percentile migration rate for each segment.  
+    upstream: distance downstream of each segment start
+    downstream: distance downstream of each segment end
+    """
+    R1 = np.array(R1)
+
+    #where curvature changes direction, =1
+    nodes = np.array([(curv[i-1]*curv[i])< 0 for i in range(1,len(curv)-1)])
+
+
+    idx = np.where(nodes==1)[0]
+    upstream = s[idx[:-1]]  
+    downstream = s[idx[1:]]  
+    
+    MR = [np.mean(R1[idx[i]:idx[i+1]]) for i in range(len(idx)-1)]
+    print(MR)
+    input()
+    return MR, s[idx]
 
        
