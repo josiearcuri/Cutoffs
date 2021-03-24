@@ -13,25 +13,25 @@ import pandas as pd
 D=3.4
 W = 100                     #constant width
 deltas = W//2;            #spacing of nodes along centerline
-nit = 1000              # number of iterations
+nit = 500              # number of iterations
 Cf = 0.005              # dimensionless Chezy friction factor
-kl = 10/(365*24*60*60.0) # migration rate constant (m/s)
+kl = 20/(365*24*60*60.0) # migration rate constant (m/s)
 dt = 2*365*24*60*60.0     # time step (s)
 pad= 200                     # dont change
-saved_ts = 50              # which time steps centerline will be saved at
-crdist = 2*W                    # how close  banks get before cutoff in m
+saved_ts = 100              # which time steps centerline will be saved at
+crdist = 4*W                    # how close  banks get before cutoff in m
 
 
 #Set Variables fro nonlocal efects
-decay_rate = dt/(15*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
-bump_scale = 0              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
+decay_rate = dt/(6*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
+bump_scale = 4              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
 cut_thresh = 100            #how many cutoffs to simulate, arbitrary if running for time
 
 
 #Set Result Directory
 result_dir = "sample_data/InitialChannel/" ##change this to wherever you want to save your results
 
-name= "init"
+name= "case2_20"
 
 
 #Initiate Channel Object

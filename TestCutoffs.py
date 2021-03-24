@@ -42,6 +42,8 @@ if int(length) >=(max_search_d*W)/4:
 else: 
     print("Warning: centerline only long enough to search over " +str(int(4*max_search_d*W))+" ch-w windows")
 #input()   
+
+
 #Initialize Ripley's K test for 2d space-time
 Kest = SpaceTime.RipleysKEstimator_spacetime(t_max=year, d_max=length, t_min=0, d_min=0, width = W, dt= dt)
 

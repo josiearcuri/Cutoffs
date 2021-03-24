@@ -202,7 +202,7 @@ class ChannelBelt:
                 channel = Channel(x,y,W,D) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
-                self.sinuosity.append(Sin[0])
+                self.sinuosity.append(Sin)
 
     def plot_channels(self):
         cot = np.array(self.cutoff_times)
@@ -325,7 +325,7 @@ def generate_initial_channel(W,D,deltas,pad):
     D - channel depth
     deltas - distance between nodes on centerline
     pad - padding (number of nodepoints along centerline)"""
-    cl_length = (50**2)*W/10.0# length of noisy part of initial centerline
+    cl_length = ((50)**2)*W/2# length of noisy part of initial centerline
     pad1 = pad//10
     #padding at upstream end can be shorter than padding on downstream end
     if pad1<5:
@@ -341,7 +341,6 @@ def load_initial_channel(filepath, W, D, deltas):
     filepath - csv with x, y coordinates and no headers
     W - channel width
     D - channel depth
-    Sl - channel gradient
     deltas - distance between nodes on centerline"""
     df = pd.read_csv(filepath, sep = ',', header=None).values
     x = df[:,0]
@@ -391,7 +390,6 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
     ## z-dim array, interpolated with constant slope along points of centerline.  assumes centerline points are equidistantly placed along original centerline. 
     #deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
     return Channel(points_fitted[0],points_fitted[1],W,D)
-
 
 @numba.jit(nopython=True)
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
@@ -544,7 +542,6 @@ def get_channel_banks(x,y,W):
 def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .05):
     #reshape array to fit new centerline
     ne_new = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
-   
     ###decay old NE
     ne_new = ne_new*np.exp(-decay)
     ### remove ne that are less than some threshold, default = .05 (1/20 of background rate)
@@ -581,6 +578,54 @@ def get_radii(c, ind1, ind2, W):
                
     return max_rad
 
+def plot_distribution(cuts,W, filepath):
+    x = cuts['downstream_distance']/W
+    y = cuts['time']
+
+    # definitions for the axes
+    left, width = 0.1, 0.65
+    bottom, height = 0.1, 0.65
+    spacing = 0.005
     
+    rect_scatter = [left, bottom, width, height]
+    rect_histx = [left, bottom + height + spacing, width, 0.2]
+    rect_histy = [left + width + spacing, bottom, 0.2, height]
+
+    # start with a square Figure
+    fig = plt.figure(figsize=(5, 5))
+    plt.rcParams.update({'font.size': 10})
+    ax = fig.add_axes(rect_scatter)
+    ax_histx = fig.add_axes(rect_histx, sharex=ax)
+    ax_histy = fig.add_axes(rect_histy, sharey=ax)
+
+    # use the previously defined function
+    scatter_hist(x, y, ax, ax_histx, ax_histy)
+    ax.set_ylabel("time (years)")
+    #plt.xlim(left=0)
+    #plt.ylim(bottom=0)
+    ax.set_xlabel("distance downstream (ch-w)")
+
+    
+    return fig
+def scatter_hist(x, y, ax, ax_histx, ax_histy):
+    # no labels
+    ax_histx.tick_params(axis="x", labelbottom=False)
+    ax_histy.tick_params(axis="y", labelleft=False)
+
+    # the scatter plot:
+    ax.scatter(x, y, c = 'black', s = 1.5)
+
+    # now determine nice limits by hand:
+    xbinwidth = 25
+    ybinwidth = 10
+    xmax = np.max(np.abs(x))
+    ymax = np.max(np.abs(y))
+    xlim = (int(xmax/xbinwidth) + 1) * xbinwidth
+    ylim = (int(ymax/ybinwidth) + 1) * ybinwidth
+
+    xbins = np.arange(0, xlim + xbinwidth, xbinwidth)
+    ybins = np.arange(0, ylim + ybinwidth, ybinwidth)
+    ax_histx.hist(x, bins=xbins)
+    ax_histy.hist(y, bins=ybins, orientation='horizontal')
 
        

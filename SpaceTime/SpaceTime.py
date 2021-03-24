@@ -64,8 +64,11 @@ class RipleysKEstimator_spacetime:
         """
         npts = 500
         weights = np.ones(shape=(npts * (npts - 1) // 2), dtype=np.double) 
+        #top
         weights[(((self.t_max- yi) - diff_t )<= 0)] =2
+        #bottom
         weights[((yi-diff_t) <= 0)] =2
+        
         weights[(((self.d_max- xi) - diff_d )<= 0)] =2
         weights[((xi-diff_d) <= 0)] =2
      

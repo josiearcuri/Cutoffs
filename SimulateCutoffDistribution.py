@@ -16,30 +16,30 @@ W = 100                   #constant width (m)
 deltas = W//2;            #spacing of nodes along centerline (m)
 nit = 2*(21**2)             # number of iterations
 Cf = .005            # dimensionless Chezy friction factor
-kl = 6.6/(365*24*60*60.0) # migration rate constant (m/s)
-dt = 1*365*24*60*60.0     # time step (s)
+kl = 20/(365*24*60*60.0) # migration rate constant (m/s)
+dt = .5*365*24*60*60.0     # time step (s)
 pad= 200                     # dont change
-saved_ts = 200               # which time steps centerline will be saved at
-crdist = 2*W                    # how close  banks get before cutoff in m
+saved_ts = 500               # which time steps centerline will be saved at
+crdist = 4*W                    # how close  banks get before cutoff in m
 #Set Variables for nonlocal efects
-decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
-bump_scale = 2              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 1 for no nonlocal effects
-cut_thresh = 100            #how many cutoffs to simulate
+decay_rate = dt/(6*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
+bump_scale = 4              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 1 for no nonlocal effects
+cut_thresh = 500            #how many cutoffs to simulate
 
 #Set mode for titles
-mode = "Case2_Run10_"
+mode = "Case2_Run20_"
 
 #Set Result Directory
-result_dir = "sample_results/case2/10/" 
+result_dir = "sample_results/case2/20/" 
 
 #Load existing Centerline
-filepath ="sample_data/InitialChannel/InitialCL_100width.csv"
+filepath ="sample_data/InitialChannel/InitialCL_case2_20.csv"
 #filepath = result_dir+"InitialCL_result.csv"
 
 ch= hkp.load_initial_channel(filepath, W, D, deltas)
 
 #Ititalize Channel Belt for migration
-chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], cutoff_dists = [], decay_rate = decay_rate, bump_scale = bump_scale, cut_thresh= cut_thresh, sinuosity = [])
+chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0],cutoff_times=[], cutoff_dists = [], decay_rate = decay_rate, bump_scale = bump_scale, cut_thresh= cut_thresh, sinuosity = [3.1])
 
 chb.plot_channels()
 
