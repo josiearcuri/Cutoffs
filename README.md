@@ -18,11 +18,11 @@ A full notebook will be available shortly, but here is are some example outputs:
 
 *record when and where meander bend cutoffs occur as events in 2-d space-time* 
 
-![image of distribution](sample_results/case2/17/Case2_Run17_500_cutoffs_timevsspace)
+![image of distribution](sample_results/case2/17/Case2_Run17_500_cutoffs_timevsspace.png)
 
 *statistically compare intensities of cutoff events to randomness*
 
-![image of stat test](sample_results/case2/17/Case2_Run17_500_cutoffs_spacetimektest)
+![image of stat test](sample_results/case2/17/Case2_Run17_500_cutoffs_spacetimektest.png)
 
 ## Dependencies
 Numpy, Scipy, Pandas,Matplotlib, Seaborn
