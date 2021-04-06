@@ -752,12 +752,12 @@ def moving_average(matrix, window):
     print(years)
     print(bends)
     mid = np.zeros(shape = (years, bends))
-
-    for year in range(years):
+    mid[0,:bends] = matrix[0,:bends]
+    for year in range(1,years):
         if year < window:
-            mid[year, :] = np.mean(matrix[0:year, :bends], axis = 0)
+            mid[year, :] = np.nanmean(matrix[:year, :bends], axis = 0)
         else:
-            mid[year, :] = np.mean(matrix[year-window:year, :bends], axis = 0)
+            mid[year, :] = np.nanmean(matrix[year-window:(year+1), :bends], axis = 0)
      
     return mid
     
@@ -777,7 +777,7 @@ def plot_segmented_MR(MR):
     #min
     axs[0].plot(mid, range(len(mid)), alpha=.2, c = 'k')
     #mean
-    axs[0].plot(np.nanmean(mid, axis = 1), range(len(mid)), alpha=1, c = 'r')
+    axs[0].plot(np.nanmax(mid, axis = 1), range(len(mid[:,0])), alpha=1, c = 'r')
     axs[0].set_xlim((0,np.nanmax(mid)))
     axs[0].set_ylim((0,len(MR[:, 0])))
     axs[0].set_ylabel('time (yr)')

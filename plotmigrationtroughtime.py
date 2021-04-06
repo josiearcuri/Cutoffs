@@ -7,7 +7,7 @@ import pandas as pd
 
 
 
-path = "sample_results/case2/17/"
+path = "sample_results/case2/14/"
 name = "bendbybendmr.csv"
 MR = pd.read_csv(path+name, sep = ',', index_col = 0)
 
