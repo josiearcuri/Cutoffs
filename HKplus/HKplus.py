@@ -2,18 +2,19 @@ import numpy as np
 import pandas as pd
 import time, sys
 import numba 
-
+import math
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib import cm
-
+import matplotlib as mpl
 
 from scipy.stats import norm
 import scipy.interpolate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
+
 
 
 
@@ -47,7 +48,8 @@ class Channel:
         """initialize Channel object
         x, y, z  - coordinates of centerline
         W - channel width
-        D - channel depth"""
+        D - channel depth
+        MR - migration rate from last centerline"""
         self.x = x
         self.y = y
         self.W = W
@@ -58,10 +60,15 @@ class Channel:
 
 class Cutoff:
     """class for Cutoff objects"""
-    def __init__(self,x,y,W,dist, time, cut_len, rad):
+    def __init__(self,x,y,W,dist, time, cut_len, rad, cllen):
         """initialize Cutoff object
         x, y,  - coordinates of centerline
         W - channel width
+        dist - distance along centerline of upstream most node of cutoff bend. 
+        time - year of occurrence
+        cut_len - ditance removed from centerline by cutoff
+        radius - radius of curvature 
+        cllen - centerline length after cutoff
         """
         self.x = x
         self.y = y
@@ -70,6 +77,7 @@ class Cutoff:
         self.time = time
         self.cut_len = cut_len
         self.radius = rad
+        self.cllen = cllen
         
 class ChannelBelt:
     """class for ChannelBelt objects"""
@@ -134,10 +142,10 @@ class ChannelBelt:
             x,y,xc,yc,cut_dist, cut_len, ind1, ind2 = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
             
-            Sin = get_sinuosity(x,s)
+            Sin = get_sinuosity(x,y,s)
             if len(xc)>0: # save cutoff data
                 rad = get_radii(curv, ind1, ind2, W)
-                cutoff = Cutoff(xc,yc,W,cut_dist[0],last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len[0], rad) # create cutoff object
+                cutoff = Cutoff(xc,yc,W,cut_dist[0],last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len[0], rad, s[-1]) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
                 self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
@@ -187,14 +195,14 @@ class ChannelBelt:
             ne = update_nonlocal_effects(ne, s, self.decay_rate, self.bump_scale, cut_dist, cut_len) #update array of ne with last itn's cutoff(s) and decay old ne
             curv = compute_curvature(x,y)
             klarray = nominal_rate(kl, ne)## compute array of nominal migration rate in m/s with nonlocal effects accounted for
-            x, y, R1  = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
-            MR, DS = segmented_MR(curv, R1, ds)
+            x, y, MR  = migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma)
+          
             x,y,xc,yc,cut_dist, cut_len,ind1, ind2 = cut_off_cutoffs(x,y,s,crdist,deltas) # find and execute cutoffs
             x,y,dx,dy,ds,s = resample_centerline(x,y,deltas) # resample centerline
-            Sin = get_sinuosity(x,s)
+            Sin = get_sinuosity(x,y,s)
             if len(xc)>0: # save cutoff data
                 rad = get_radii(curv, ind1, ind2, W)
-                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len, rad) # create cutoff object
+                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len, rad, s[-1]) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
                 self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
@@ -202,7 +210,7 @@ class ChannelBelt:
 
             # saving centerlines:
             if np.mod(itn,saved_ts)==0 or len(self.cutoffs)>=self.cut_thresh:
-                channel = Channel(x,y,W,D,MR, DS) # create channel object, save year
+                channel = Channel(x,y,W,D,MR) # create channel object, save year
                 self.cl_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.channels.append(channel)
                 self.sinuosity.append(Sin)
@@ -252,7 +260,7 @@ class ChannelBelt:
             
             if len(xc)>0: # save cutoff data
                 rad = get_radii(curv, ind1, ind2, W)
-                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len, rad) # create cutoff object
+                cutoff = Cutoff(xc,yc,W,cut_dist,last_cl_time+(itn)*dt/(365*24*60*60.0), cut_len, rad, s[-1]) # create cutoff object
                 #keep track of year cutoff occurs, where it occurs, and save an object. 
                 self.cutoff_times.append(last_cl_time+(itn)*dt/(365*24*60*60.0))
                 self.cutoff_dists.append(cut_dist)
@@ -320,6 +328,104 @@ class ChannelBelt:
 
         return fig
     
+    def plot_channels2(self,ncutoff, directory):
+        cot = np.array(self.cutoff_times)
+        sclt = np.array(self.cl_times)
+      
+        # set up min and max x and y coordinates of the plot:
+        xmin = np.min(self.channels[0].x)
+        xmax = 1
+        ymax = 1
+        for i in range(len(self.channels)):
+            ymax = max(ymax, np.max(np.abs(self.channels[i].y)))
+            xmax = max(xmax, np.max(np.abs(self.channels[i].x)))
+
+        ymax = ymax+1000# add a bit of space on top and bottom
+        ymin = -1*ymax
+        # size figure so that its size matches the size of the model:
+
+        cmap = cm.get_cmap('gray_r',self.bump_scale)
+
+        order = 0
+        figs=[]
+    
+        cmap = LinearSegmentedColormap.from_list('custom red', ['#ffffff','#de2d26'], N=256)
+        ind = np.where(sclt>=cot[ncutoff])[0][0]
+        times = np.arange(0, len(sclt))[(ind-1):1+(ind+(4*4))]
+        fig, axs = plt.subplots(6,1, figsize = (2.5, 5), constrained_layout = True)
+
+        cx1 = self.cutoffs[ncutoff].x[0]
+        cy1 = self.cutoffs[ncutoff].y[0]
+        dist = self.cutoffs[ncutoff].cut_len
+        loc =  self.cutoffs[ncutoff].dist
+     
+        bump = self.bump_scale
+        decay = self.decay_rate
+        steps = np.arange(1, 18, 4)   
+        ne = np.zeros_like(self.channels[times[0]].x)
+        s = np.zeros_like(self.channels[times[0]].x)
+        for t in range(0,len(times)):
+                
+
+            
+            W = self.channels[-1].W
+            x1 = self.channels[times[t]].x
+            y1 = self.channels[times[t]].y
+            dx, dy, ds, s = compute_derivatives(x1,y1)
+            ne = update_nonlocal_effects(ne, s, decay, bump, [], [])    
+            xm, ym = get_channel_banks(x1,y1,W)
+            order += 1
+            central_node = np.where(x1>=cx1[0])[0][0]      
+            upstream_node = np.where(s>=s[central_node]-dist)[0][0]
+            downstream_node = np.where(s>=s[central_node]+dist)[0][0]
+            ne_x = x1[upstream_node-1:downstream_node+1]
+            ne_y = y1[upstream_node-1:downstream_node+1]
+            ne_mag = ne[upstream_node-1:downstream_node+1] 
+            if t==0:
+                
+         
+                ne = update_nonlocal_effects(ne, s, decay, bump,np.array(loc), np.array(dist))
+                central_node = np.where(x1>=cx1[0])[0][0]      
+                upstream_node = np.where(s>=s[central_node]-dist)[0][0]
+                downstream_node = np.where(s>=s[central_node]+dist)[0][0]
+                ne_x = x1[upstream_node-1:downstream_node+1]
+                ne_y = y1[upstream_node-1:downstream_node+1]
+                ne_mag = ne[upstream_node-1:downstream_node+1]  
+                axs[0].set_xlim([cx1[0]-dist[0]/1.85,cx1[0]+dist[0]/1.85])
+                axs[0].fill(xm,ym,facecolor='k',edgecolor = 'k', alpha = 1, linewidth=0.1,zorder=order)
+                #axs[i].fill(xm[idx,y1,facecolor='r',edgecolor = 'none', alpha = .5,zorder=order, label= '_nolegend_')
+                #plt.plot(chx1[central], chy1[chx1<=x1[0]], color = 'k', linewidth = 1, zorder = order)
+                axs[0].annotate(text ='year '+str(int(t)) ,  xy = (.9,.9), xycoords='axes fraction', fontsize = 10)
+                axs[0].axis('off')
+                
+
+                
+            if t  in steps:
+
+                nextind = np.where(steps==t)[0][0]+1
+                
+                axs[nextind].fill(xm,ym,facecolor='k',edgecolor = 'k', alpha = 1, linewidth=0.1,zorder=order, label= 'year '+str(2+int((t-1)/4)))
+                #axs[i].fill(xm[idx,y1,facecolor='r',edgecolor = 'none', alpha = .5,zorder=order, label= '_nolegend_')
+                #plt.plot(chx1[central], chy1[chx1<=x1[0]], color = 'k', linewidth = 1, zorder = order)
+                axs[nextind].annotate(text ='year '+str(1+int((t-1)/4)) ,  xy = (.9,.9), xycoords='axes fraction', fontsize = 10)
+                axs[nextind].axis('off')
+                nemap = axs[nextind].scatter(ne_x[ne_mag>0], ne_y[ne_mag>0], s= 40, c = ne_mag[ne_mag>0], vmin = 0, vmax = bump, cmap = cmap)
+                axs[nextind].set_xlim([cx1[0]-dist[0]/1.85,cx1[0]+dist[0]/1.85])
+            
+                
+                
+                
+  
+            #axs[t].set_ylim([ymin,ymax])
+
+            
+      
+        norm = mpl.colors.Normalize(vmin=0, vmax=bump)
+        fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),orientation='horixontal', ax = axs, label = 'nonlocal effect [*]',  shrink = 0.6)
+        #axs[-1].set_xlim([cx1[0]-dist[0]/4,cx1[0]+dist[0]/4])
+        
+    
+        return fig
     def cutoff_distributions(self, year, filepath, mode):
         """pull cutoff data from channel belt object and export csv, return dataframe for plotting
         year - last centerline year
@@ -331,23 +437,26 @@ class ChannelBelt:
         times = [i.time for i in self.cutoffs]
         radius = [i.radius for i in self.cutoffs]
         cutlen = [i.cut_len[0] for i in self.cutoffs]
-        cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'radius':radius, 'cutlen': cutlen})
+        cllen = [i.cllen for i in self.cutoffs]
+        cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'radius':radius, 'cutlen': cutlen, 'cllen': cllen })
         
         #save distribution to csv
         newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
         plot_cuts(cuts,self.channels[-1].W, filepath)
         return cuts
     def MR_time(self, filepath):
-        MR = [[bend for bend in i.MR] for i in self.channels[1:]] 
+        MR = [[bend for bend in i.MR] for i in self.channels[1:]]
+    
         clt = np.array(self.cl_times[1:])
         
-        MRdf= pd.DataFrame(MR).dropna(axis=1, how = 'all')
-        print(MRdf.head())
-        MRdf.to_csv(filepath, index_label = "Cutoff")
-        MRdf = pd.read_csv(filepath, sep = ',', index_col = 0)
-        plot_segmented_MR(MRdf)
+        MRdf= pd.DataFrame(MR).dropna(axis=1, how = 'all').dropna(axis=0, how = 'all')
+
+        MRdf.to_csv(filepath, index=False, header=False)
+        MRdf = pd.read_csv(filepath, sep = ',', header=None).to_numpy()
+        fig, axs = plt.subplots(1,1, figsize=(6,8))
+        plot_segmented_MR(MRdf,np.nanmean(MRdf), fig, axs, 'k', filepath[-16:-18])
         
-        
+       
 
         
 def plot_cuts(cuts,W, filepath):
@@ -385,7 +494,7 @@ def migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     R1 = compute_migration_rate(pad,len(x),ds,alpha,omega,gamma,R0)
     
     # calculate bend-by-bend migration rate
-    MR = segmented_MR(curv, R1*dt, s)
+    MR = segmented_MR(curv, R1, s)
     # calculate new centerline coordinates:
     dy_ds = dy/ds
     dx_ds = dx/ds
@@ -402,7 +511,7 @@ def generate_initial_channel(W,D,deltas,pad):
     D - channel depth
     deltas - distance between nodes on centerline
     pad - padding (number of nodepoints along centerline)"""
-    cl_length = ((50)**2)*W/2# length of noisy part of initial centerline
+    cl_length = ((50*W)*10)# length of noisy part of initial centerline
     pad1 = pad//10
     #padding at upstream end can be shorter than padding on downstream end
     if pad1<5:
@@ -427,7 +536,7 @@ def load_initial_channel(filepath, W, D, deltas):
     MR = np.zeros(int(len(x)/30))
     
     return Channel(x,y,W,D,MR)
-def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_corr= -1):
+def generate_channel_from_file(filelist, deltas, matlab_corr= -1):
     """function for creating a MeanderPy Channel object from an externally-sourced centerline in .csv file format.
         inputs:
         filelist - filelist must be a list of filepaths.  thie first should be a csv containing x and y values for each point on a centerline.  The second should be the widths of each point along the centerline
@@ -456,7 +565,7 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
     W = np.mean(varlist[1][:,0])*30
 
     ## water depth scalar#
-    D = D_in  
+    D = np.exp(np.log(W/18.8)/1.41)  
     # Linear length along the line, add a zero for first point:
     points = np.vstack([x, y]).T
     distance = np.cumsum( np.sqrt(np.sum( np.diff(points, axis=0)**2, axis=1 )) )
@@ -466,13 +575,13 @@ def generate_channel_from_file(filelist, D_in= 10, smooth_factor=.25, matlab_cor
     splines = [InterpolatedUnivariateSpline(distance, coords) for coords in points.T]
 
     # Compute the spline for the smoothed(sampled) distances:
-    points_fitted = np.vstack([spl(np.linspace(0, distance[-1],round(len(x)*smooth_factor))) for spl in splines])
+    points_fitted = np.vstack([spl(np.linspace(0, distance[-1],int(distance[-1]/(W//2)))) for spl in splines])
     
     ## z-dim array, interpolated with constant slope along points of centerline.  assumes centerline points are equidistantly placed along original centerline. 
     #deltas = round(distance[-1]/(len(points_fitted[0])-1)) 
-    MR = np.zeros_like(point_fitted[0])
+    MR = np.zeros_like(points_fitted[0])
   
-    return Channel(points_fitted[0],points_fitted[1],W,D, MR)
+    return Channel(points_fitted[0],points_fitted[1],W,D, MR), D, W
 
 @numba.jit(nopython=True)
 def compute_migration_rate(pad,ns,ds,alpha,omega,gamma,R0):
@@ -565,7 +674,7 @@ def find_cutoffs(x,y,crdist,deltas):
     return ind1, ind2 # return indices of cutoff points and cutoff coordinates
 def cut_off_cutoffs(x,y,s,crdist,deltas):
     """function for executing cutoffs - removing oxbows from centerline and storing cutoff coordinates
-    from MeanderPy
+    from meanderpy
     x,y - coordinates of centerline
     crdist - critical cutoff distance
     deltas - distance between neighboring points along the centerline
@@ -599,7 +708,7 @@ def cut_off_cutoffs(x,y,s,crdist,deltas):
 
 def get_channel_banks(x,y,W):
     """function for finding coordinates of channel banks, given a centerline and a channel width
-    from MeanderPy
+    from meanderpy
     x,y - coordinates of centerline
     W - channel width
     outputs:
@@ -624,27 +733,26 @@ def get_channel_banks(x,y,W):
     return xm, ym
 def update_nonlocal_effects(ne, s, decay, scale, cut_dist, cut_len, thresh = .05):
     #reshape array to fit new centerline
-    ne_new = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
+    ne = np.interp(np.arange(len(s)),np.arange(len(ne)), ne)
     ###decay old NE
-    ne_new = ne_new*np.exp(-decay)
+    ne_new = ne*np.exp(-decay)
     ### remove ne that are less than some threshold, default = .05 (1/20 of background rate)
-    ne_new[np.where(ne_new<thresh)] = 0
-    if scale>1:
-        for k in range(len(cut_dist)): #for each cutoff, add new NE
+    ne_new[np.where(ne_new<(thresh))[0]] = 0
+    for k in range(len(cut_dist)): #for each cutoff, add new NE
 
         #gaussian bump
-            mu = cut_dist[k]
+        mu = cut_dist[k]
+        print(cut_len[k])
+        sigma = (cut_len[k]*1.19)/2 # want 88% of the bump within 1.19*cut_len, rest is negligible
 
-            sigma = (cut_len[k]*1.19)/2 # want the whole bump within 1.19*cut_len
-
-            y_bump = norm.pdf(s, mu, sigma)
-            ne_new = ne_new + ((scale-1)*y_bump/np.max(y_bump))
+        y_bump = norm.pdf(s, mu, sigma)
+        ne_new = ne_new + ((scale)*y_bump/np.max(y_bump))
   
     return ne_new
 
-def get_sinuosity(x,s):
-    v_len = x[-1]-x[0]
-    Sin = s[-1]/v_len
+def get_sinuosity(x,y,s):
+    dist = np.hypot(abs(x[-1]-x[0]), abs(y[-1]-y[0]))
+    Sin = s[-1]/dist
     return Sin
 
 def plot_sinuosity(time, sin):
@@ -663,7 +771,7 @@ def get_radii(c, ind1, ind2, W):
 
 def plot_distribution(cuts,W, filepath):
     x = cuts['downstream_distance']/W
-    y = cuts['time']
+    y = cuts['time']- min(cuts['time'])
 
     # definitions for the axes
     left, width = 0.1, 0.65
@@ -675,20 +783,20 @@ def plot_distribution(cuts,W, filepath):
     rect_histy = [left + width + spacing, bottom, 0.2, height]
 
     # start with a square Figure
-    fig = plt.figure(figsize=(5, 5))
+    fig, ax = plt.subplots(1,1,figsize=(3, 3))
     plt.rcParams.update({'font.size': 10})
-    ax = fig.add_axes(rect_scatter)
-    ax_histx = fig.add_axes(rect_histx, sharex=ax)
-    ax_histy = fig.add_axes(rect_histy, sharey=ax)
-
+    #ax = fig.add_axes([0,0,1,1])
+    #ax_histx = fig.add_axes(rect_histx, sharex=ax)
+    #ax_histy = fig.add_axes(rect_histy, sharey=ax)
+    ax.scatter(x, y, c = 'black', s = 10, alpha = .8)
     # use the previously defined function
-    scatter_hist(x, y, ax, ax_histx, ax_histy)
+   # scatter_hist(x, y, ax, ax_histx, ax_histy)
     ax.set_ylabel("time (years)")
     #plt.xlim(left=0)
     #plt.ylim(bottom=0)
     ax.set_xlabel("distance downstream (ch-w)")
-
-    
+    ax.set_xlim([0,1500])
+    ax.set_ylim([0,250])
     return fig
 def scatter_hist(x, y, ax, ax_histx, ax_histy):
     # no labels
@@ -696,7 +804,7 @@ def scatter_hist(x, y, ax, ax_histx, ax_histy):
     ax_histy.tick_params(axis="y", labelleft=False)
 
     # the scatter plot:
-    ax.scatter(x, y, c = 'black', s = 1.5)
+    ax.scatter(x, y, c = 'black', s = 2)
 
     # now determine nice limits by hand:
     xbinwidth = 25
@@ -725,14 +833,17 @@ def segmented_MR(curv, R1, s, n=90):
     upstream: distance downstream of each segment start
     downstream: distance downstream of each segment end
     """
-    R1 = np.array(R1)
-    #where curvature changes direction, =1
-    nodes = np.array([(curv[i-1]*curv[i])< 0 for i in range(1,len(curv)-1)])
-    idx = np.where(nodes==1)[0]
-    idx = [idx[i] for i in range(len(idx)-1) if idx[i+1]-idx[i] > 5]
+    R1 = np.array(R1)*365*24*60*60.0 #m/yr instead of m/sec
+    infs1 = np.where(np.logical_and(curv[1:] > 0, curv[:-1] < 0))[0] + 1
+    infs2 = np.where(np.logical_and(curv[1:] < 0, curv[:-1] > 0))[0] + 1
+    idx = np.sort(np.concatenate((infs1, infs2)))
+    #nodes = np.array([(curv[i-2]*curv[i])< 0 and (curv[i+2]*curv[i])> 0 for i in range(2,len(curv)-2)])
+    #idx = np.where(nodes==1)[0]
+    idx = [idx[i] for i in range(len(idx)-1) if idx[i+1]-idx[i] >5]
+    
      
     
-    MR = [max(np.abs(R1[idx[i]:idx[i+1]])) for i in range(len(idx)-1)]
+    MR = [np.percentile(np.abs(R1[idx[i]:idx[i+1]]), 100) for i in range(len(idx)-1)]
 
     return MR
 def moving_average(matrix, window):
@@ -746,42 +857,94 @@ def moving_average(matrix, window):
     output
     mid: moving average migration rate over window years for each bend
     """
-    
-    years = len(matrix[:,0])
-    bends = np.min([np.count_nonzero(~np.isnan(matrix[i, :])) for i in range(years)])
-    print(years)
-    print(bends)
+
+    years = len(matrix)
+    bends = np.min([np.count_nonzero(~np.isnan(matrix[i])) for i in range(years)])
+
     mid = np.zeros(shape = (years, bends))
-    mid[0,:bends] = matrix[0,:bends]
+    mid[0,:bends] = matrix[0][:bends]
     for year in range(1,years):
         if year < window:
-            mid[year, :] = np.nanmean(matrix[:year, :bends], axis = 0)
+            mid[year, :] = np.nanmean(matrix[:year][:bends])
         else:
-            mid[year, :] = np.nanmean(matrix[year-window:(year+1), :bends], axis = 0)
+            mid[year, :] = np.nanmean(matrix[year-window:(year+1)][:bends])
      
     return mid
     
-def plot_segmented_MR(MR):
+def plot_segmented_MR(MR,obmr, fig, axs, c, name, dt = 1):
    
-    #mean_mr_per_year = np.nanmean(MR, axis = 1)
-   # mean_mr_per_bend = np.nanmean(MR, axis = 0)
-   
-    fig, axs = plt.subplots(1,2, figsize=(20,10), sharey= True)
+    mean_all = round(np.nanmean(MR[:, 2:-2]),3)
+    max_all = round(np.nanmax(MR[:, 2:-2]), 3)
+    
+    
     #heatmap = ax1.imshow(MR, cmap = 'gist_heat')
-    heatmap = axs[1].imshow(MR, cmap = 'cividis', vmin = 0, vmax =np.nanmax(MR), aspect = 'auto', origin = 'lower')
-    axs[1].set_xlabel('distance downstream (bend #)')
+    #heatmap = axs[1].imshow(MR/100, cmap = 'cividis', vmin = 0, vmax =np.nanmax(MR/100), aspect = 'auto', origin = 'lower')
+    #axs[1].set_xlabel('distance downstream (bend #)')
   
-    cb = fig.colorbar(heatmap, ax=axs[1])
-    cb.set_label("maximum migration rate (m/yr)")
-    mid = moving_average(MR, 2)
+    #cb = fig.colorbar(heatmap, ax=axs[1])
+    #cb.set_label("maximum migration rate (ch-w/yr)")
+    
+    #mid = moving_average(MR, 2)/100
     #min
-    axs[0].plot(mid, range(len(mid)), alpha=.2, c = 'k')
+    #axs[0].plot(MR/100, range(len(MR)), alpha=.2, c = 'k')
     #mean
-    axs[0].plot(np.nanmax(mid, axis = 1), range(len(mid[:,0])), alpha=1, c = 'r')
-    axs[0].set_xlim((0,np.nanmax(mid)))
-    axs[0].set_ylim((0,len(MR[:, 0])))
-    axs[0].set_ylabel('time (yr)')
-    axs[0].set_xlabel('max mr along bend (m/yr)')
+   # MR_ddt = np.nanpercentile((MR[1:, :] - MR[:-1, :])/MR[1:, :], 50, axis = 1) 
+    #f_spec, Pxx_mid = periodogram(np.nanpercentile(MR[:, 10:], 50, axis = 1),dt, scaling = 'spectrum')
+    
+    
+    
+    #f_spec, Pxx_mid = welch(np.nanpercentile(MR[:, :], 50, axis = 1), dt, nperseg=500, scaling = 'spectrum')
+    #f, t, Zxx = stft(np.nanpercentile(MR[:, :], 50, axis = 1), nperseg=100)
+    #line =axs.pcolormesh(t, f, np.abs(Zxx), vmin=0,vmax=int(np.nanpercentile(Zxx, 90)), shading='gouraud')
+    
+    #filter
+    #Pxx_mid[1:-1]= np.convolve(Pxx_mid, np.ones(3)/3, mode='valid')
+    #cumu = np.cumsum(Pxx_mid)
+    #midfreq = f_spec[cumu>=(cumu[-1]/2)][0]
+    
+    #freqscale = (f_spec[1:])/(500/len(MR[:, 0]))
+    
+    #Pxx_mid = savgol_filter(Pxx_mid,5,3)
+   # Pxx_den = medfilt(Pxx_den)
+    #upper = np.percentile(Pxx_mid, 99)
+    #upper_noise = np.percentile(Pxx_mid[int(len(Pxx_mid)/2):], 95)
 
-    return fig
+    #NP = np.mean(Pxx_mid[-int((len(Pxx_mid)/4)):])
+    #peaks, _ = find_peaks(Pxx_mid)
+    #[proms, leftbases, rightbases] =  peak_prominences(Pxx_mid, peaks)
+    #mids = ((rightbases-leftbases)/2) +leftbases
+ 
+    #newmids = mids[proms>=np.percentile(proms, 90)]
+    #print(newmids)
+    #input()
+    #proms = proms[proms>=np.percentile(proms, 90)]
+  
+    
+    #idx = proms.argsort()[:]
+    #proms = proms[idx]
+    #newmids = newmids[idx]
+    #lower_noise = np.percentile(Pxx_mid[-int(len(Pxx_mid)/5):], 1)
+    
+    #amp = Pxx_mid.max()
+    #stn = amp/NP
+    #maxfreq = f_spec[Pxx_mid == Pxx_mid.max()]
+    line = axs.hist(MR.flatten(), range=(0,500), bins= range(0, 50),color= c, linewidth = 1.5, histtype='step')
+    #line = axs.semilogy(f[1:], NP/(np.power(f, 2))[1:],alpha=.8, linewidth = 1, ls = "--", c = 'brown', label = '_nolegend_')
+    #line = axs.semilogy(f_spec[1:], 1/(np.power(f_spec, .8))[1:],alpha=.8, linewidth = 1, ls = "--", c = 'pink', label = '_nolegend_')
+    #line = axs.semilogy(f[1:], NP+(f[1:]*0),alpha=.8, linewidth = 1, ls = "--", c = 'purple', label = '_nolegend_')
+    #line = axs.semilogy(f_spec[1:]/(500/len(MR[:, 0])), 1/(np.ones(len(f_spec)-1)*(upper_noise/NP)),alpha=.5, linewidth = .5, ls = "--", c = 'grey', label = '_nolegend_')
+    #line = axs.semilogy(f_spec[1:]/(500/len(MR[:, 0])), 1/(np.ones(len(f_spec)-1)*(lower_noise/NP)),alpha=.5, linewidth = .5, ls = "--", c = 'grey', label = '_nolegend_')
+    #line = axs.loglog((f_spec[1:]), 1/(f_spec[1:]**2),alpha=.8, linewidth = 1, ls = "--", c = 'brown', label = '_nolegend_')
+    #line = axs.loglog((f_spec[1:]), 1/(f_spec[1:]**1),alpha=.8, linewidth = 1, ls = "--", c = 'pink', label = '_nolegend_')
+    #line = axs.loglog((f_spec[1:]), (np.ones(len(f_spec)-1)),alpha=.8, linewidth = 1, ls = "--", c = 'grey', label = '_nolegend_')
+    
+    #line = axs.semilogy((f_spec[1:]), Pxx_mid[1:]/NP,alpha=.8, linewidth = 1, c = c)#,  label = name + " SNR = "+ str(round(stn, 3)))
+    #axs.scatter(newmids, np.ones(len(newmids)),marker = 'o', color = c,alpha = .8, label = '_nolegend_')
+    #axs.set_xlim([0, 100])
+    #xtickz = axs.get_xticks()
+    #axs.set_xticklabels(1/xtickz)
+    #axs.plot(, range(len(MR[:,0])), alpha=1, c = 'r', label = 'max = '+str(max_all))
+    axs.legend(loc = 'upper right', fontsize=8, frameon = False)
+    print("mean obmr = "+str(round(mean_all,5)))
+    return fig, axs, line
        

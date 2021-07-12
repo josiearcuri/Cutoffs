@@ -161,7 +161,7 @@ class RipleysKEstimator_spacetime:
         """
         generate random distibutions in same space + time ranges as data
         """
-        rng = np.random.default_rng(seed = 42)
+        rng = np.random.default_rng(seed = 80)
         data = cutoffs[['downstream_distance', 'time']].to_numpy() 
         num_samples = len(cutoffs.time)
         r_time = np.linspace(self.dt,self.dt*max_search_t, max_search_t)
@@ -180,12 +180,11 @@ class RipleysKEstimator_spacetime:
             k_d, k_t = self._evaluate(data=z, dist_time=r_time, dist_space=r_space, mode='K') 
             mc_d[:,i] = k_d
             mc_t[:,i] = k_t
-
     
         if mode == 'K_st':
             ## monte carlo envelope - limits on probable randomness
-            upper_dt = np.percentile(mc_dt, 95, axis = 2)
-            lower_dt = np.percentile(mc_dt, 5, axis = 2)
+            upper_dt = np.percentile(mc_dt, 97.5, axis = 2)
+            lower_dt = np.percentile(mc_dt, 2.5, axis = 2)
             middle_dt = np.ma.mean(mc_dt, axis = 2)
             
             upper_d = np.ma.max(mc_d, axis = 1)
@@ -211,9 +210,9 @@ class RipleysKEstimator_spacetime:
         
             if plotornot == 1:
     
-                self.plot_st(r_space, r_time, normalized, sig_mask, np.sum(normalized))#
+                self.plot_st(r_space, r_time, normalized, sig_mask, np.sum(normalized), lower_dt-middle_dt, upper_dt-middle_dt)#
             
-            return [np.sum(normalized), np.sum(normalized*sig_mask)]
+            return [normalized,middle_dt, upper_dt-middle_dt, lower_dt-middle_dt]
         else:
             #monte carlo envelope
             upper_d = np.ma.max(mc_d, axis = 1)/(r_space*2)-1
@@ -233,14 +232,14 @@ class RipleysKEstimator_spacetime:
             stat_t = (stat_t)/(r_time*2) -1
             self.plot(upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t, num_samples)
         
-    def plot_st(self, r_space, r_time, normalized, sig_mask, D):
+    def plot_st(self, r_space, r_time, normalized, sig_mask, D, lowerlim, upperlim):
         plt.rcParams.update({'font.size': 10})
         fig,ax = plt.subplots(figsize = (8,4))
         
         cmap = plt.get_cmap('PiYG')
         vscale = np.max(abs(normalized))
         #im = ax.imshow(np.ma.masked_values(normalized, 0),origin='lower' cmap = cmap)
-        im =ax.pcolormesh(np.swapaxes(normalized,0,1), cmap = cmap,vmin = -vscale, vmax = vscale,)
+        im =ax.pcolormesh(np.swapaxes(normalized,0,1), cmap = cmap,vmin = -np.max(np.abs(lowerlim, upperlim)), vmax = np.max(np.abs(lowerlim, upperlim)))
         #plt.pcolor(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1),0), edgecolors='k', linewidths=4, alpha=0.)
         im2 =ax.pcolormesh(np.ma.masked_values(np.swapaxes(normalized*sig_mask,0,1)/np.swapaxes(normalized*sig_mask,0,1),0), zorder=2, linewidths = .01,facecolor='none', edgecolors='k',cmap='gray')
         plt.title('D ='+str(D), pad = 10)
@@ -260,7 +259,7 @@ class RipleysKEstimator_spacetime:
         
         ax.tick_params(axis = 'both', which = 'major', top =False, bottom = False, left = False, right = False)
         #ax.grid(True, which='minor', color='k', linewidth=.1)
-        return fig
+        return fig, 
     def plot(self,upper_d,upper_t, lower_d, lower_t, middle_d, middle_t, r_space, r_time, stat_d, stat_t, num_samples):
         #1-d spatial Ripley's K
         fig = plt.figure()

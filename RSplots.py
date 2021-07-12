@@ -9,5 +9,6 @@ cutoffs_df = rs.merge_dfs(cutoff_file, reach_file)
 cutoffs_df = rs.near_neigh(cutoffs_df)
 
 print(cutoffs_df.columns)
-rs.plot_nn_v2(cutoffs_df)
+rs.probs(cutoffs_df)
+plt.savefig("sample_results/bumphist.png", transparent = True, dpi = 1000)
 plt.show()
