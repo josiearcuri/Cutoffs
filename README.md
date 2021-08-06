@@ -15,14 +15,13 @@ This module builds upon a previous implementation of Howard and Knutson's center
 
 # Implementation
 For an example of one experiment, Run 
-'''
- jupyter notebook cutoffs.ipynb 
-'''
+
+    jupyter notebook cutoffs.ipynb 
+
 To reproduce Figure 3:
 
-'''
-python Figure3.py
-'''
+    python Figure3.py
+
 # Getting the code
 
 You can download a copy of all the files in this repository by cloning this repository:
@@ -30,9 +29,8 @@ You can download a copy of all the files in this repository by cloning this repo
     git clone https://github.com/josiearcuri/Cutoffs.git/
 
 # Dependencies
-'''
-conda nev create -f cutoffenv.yml
-'''
+
+    conda nev create -f cutoffenv.yml
 
 ## References
 [1]Alan Howard;Thomas Knutson; Sufficient Conditions for River Meandering: A Simulation Approach. Water Resources Research (1984) 20: 1659–1667. DOI:10.1029/WR020i011p01659
