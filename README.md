@@ -1,5 +1,5 @@
 # Cutoffs Cluster on Meandering Rivers from Self-Induced Migration
-Josie Arcuri and Doug Edmonds
+Josie Arcuri and Doug Edmonds  
 *Indiana University, Department of Earth and Atmospheric Sciences*
 > A model for simulating channel centerline migration that accounts for nonlocal effects from cutoffs, based on meanderpy[1]. We also include code to test hypothesis concerning what makes cutoffs cluster along channel centerlines through time. 
 
