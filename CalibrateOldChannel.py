@@ -24,7 +24,7 @@ crdist = 4*W                #how close banks get before cutoff in m
 #Set Variables for nonlocal efects
 decay_rate = dt/((5)*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed 
 bump_scale = 0              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
-cut_thresh = 5            #how many cutoffs to simulate, arbitrary if running for time
+cut_thresh = 5              #how many cutoffs to simulate, arbitrary if running for time
 
 
 #Load Existing Centerline

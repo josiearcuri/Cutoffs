@@ -21,9 +21,10 @@ saved_ts = 20               # which time steps centerline will be saved at
 
 
 #Set Variables fro nonlocal efects
-decay_rate = dt/(5*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
-bump_scale = 2              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
-cut_thresh = 8            #how many cutoffs to simulate, arbitrary if running for time
+#Set Variables fror Cutoff nonlocal efects
+decay_rate = dt/(5*(365*24*60*60.0));   #this is the half-life on nonlocal effects, in units of seconds
+bump_scale = 2             #this is the magntiude of nonlocal effects in relative difference between 
+cut_thresh = 5              #how many cutoffs to simulate, arbitrary if running for time
 
 #Set Result Directory
 result_dir = "sample_data/InitialChannel/" ##change this to wherever you want to save your results
