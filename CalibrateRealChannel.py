@@ -21,8 +21,8 @@ saved_ts = 20               # which time steps centerline will be saved at
 
 
 #Set Variables fro nonlocal efects
-decay_rate = dt/(10*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
-bump_scale = 10              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
+decay_rate = dt/(5*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed
+bump_scale = 2              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
 cut_thresh = 8            #how many cutoffs to simulate, arbitrary if running for time
 
 #Set Result Directory

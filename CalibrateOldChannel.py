@@ -1,5 +1,5 @@
 """
-This script uses the HKplus functions to load an existing centerline, run it for a certain number of years, then save the resulting centerline for later use.  
+This script uses the HKplus functions to load an existing centerline, allow that to migrate until a certain number of cutoffs have occurred, then save the resulting centerline for later use.  
 
 """
 import math
@@ -10,28 +10,30 @@ import pandas as pd
 
 #Set Variables for centerline and curvature calculation
 
-Cf = 0.005              # dimensionless Chezy friction factor
-kl =45/(365*24*60*60.0) # migration rate constant (m/s)
-dt = .25*365*24*60*60.0 
-nit = 20# time step (s)
-pad= 200                     # dont change
-saved_ts = 1# int(365*24*60*60.0/dt)  
-W = 100# which time steps centerline will be saved at
-deltas = W//2
-crdist = 2*W
-D = 3.4
-dur = 4
-#Set Variables fro nonlocal efects
-decay_rate = dt/((dur/2)*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed 
-bump_scale = .5              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
+D=3.4                       #constant width-average channel depth (m)
+W = 100                     #constant channel width (m)
+deltas = W//2;              #spacing of nodes along centerline
+nit = 600                   #number of iterations/how many timesteps to migrate the centerline
+Cf = 0.005                  #dimensionless Chezy friction factor
+kl = 20/(365*24*60*60.0)    #migration rate constant (m/s)
+dt = .25*365*24*60*60.0      #time step (s)
+pad= 200                    #number of nodes for periodic boundary
+saved_ts = 20               #timeteps between saving centerlines
+crdist = 4*W                #how close banks get before cutoff in m
+
+#Set Variables for nonlocal efects
+decay_rate = dt/((5)*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed 
+bump_scale = 0              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
 cut_thresh = 5            #how many cutoffs to simulate, arbitrary if running for time
 
-#Set Result Directory
-result_dir = "sample_results/case4/30/InitialChannel_31.csv" ##change this to wherever you want to save your results
 
 #Load Existing Centerline
 
-filepath = "sample_data/InitialChannel/InitialCL_starter.csv"
+filepath = "sample_data/InitialChannel/InitialCL_experiment007.csv"
+
+#Set Resulting file's suffix
+result_dir = filepath[:-4]+str(suffix)+".csv" ##change this to wherever you want to save your results
+
 
 ch = hkp.load_initial_channel(filepath, W, D, deltas)
 
@@ -57,6 +59,6 @@ xes = chb.channels[-1].x
 yes = chb.channels[-1].y
 cl = pd.DataFrame({'x': xes, 'y': yes});
 
-#cl.to_csv(result_dir, header = False, index = False)
+cl.to_csv(result_dir, header = False, index = False)
 
 
