@@ -1,6 +1,6 @@
 # Cutoffs Cluster on Meandering Rivers from Self-Induced Migration
-## Josie Arcuri and Doug Edmonds
-## *Indiana University, Department of Earth and Atmospheric Sciences*
+Josie Arcuri and Doug Edmonds
+*Indiana University, Department of Earth and Atmospheric Sciences*
 > A model for simulating channel centerline migration that accounts for nonlocal effects from cutoffs, based on meanderpy[1]. We also include code to test hypothesis concerning what makes cutoffs cluster along channel centerlines through time. 
 
 # Abstract
@@ -30,9 +30,9 @@ You can download a copy of all the files in this repository by cloning this repo
     git clone https://github.com/josiearcuri/Cutoffs.git/
 
 # Dependencies
-"""
+'''
 conda nev create -f cutoffenv.yml
-"""
+'''
 
 ## References
 [1]Alan Howard;Thomas Knutson; Sufficient Conditions for River Meandering: A Simulation Approach. Water Resources Research (1984) 20: 1659–1667. DOI:10.1029/WR020i011p01659
