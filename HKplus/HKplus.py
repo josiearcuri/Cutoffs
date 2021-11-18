@@ -441,7 +441,7 @@ class ChannelBelt:
         cuts = pd.DataFrame({'downstream_distance': distances, 'time': times, 'radius':radius, 'cutlen': cutlen, 'cllen': cllen })
         
         #save distribution to csv
-        newcuts = cuts.to_csv(filepath+mode+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
+        newcuts = cuts.to_csv(filepath+mode+"_"+str(len(cuts['time']))+"_cutoffs_distribution.csv", index_label = "Cutoff")
         plot_cuts(cuts,self.channels[-1].W, filepath)
         return cuts
     def MR_time(self, filepath):
@@ -503,7 +503,7 @@ def migrate_one_step(x,y,W,klarray,dt,k,Cf,D,pad,omega,gamma):
     y = y - R1*dx_ds*dt 
     return x,y, MR
 
-def generate_initial_channel(W,D,deltas,pad):
+def generate_initial_channel(W,D,deltas,pad, Length):
     """generate straight Channel object with some noise added that can serve
     as input for initializing a ChannelBelt object
     from MeanderPy
@@ -511,14 +511,10 @@ def generate_initial_channel(W,D,deltas,pad):
     D - channel depth
     deltas - distance between nodes on centerline
     pad - padding (number of nodepoints along centerline)"""
-    cl_length = ((50*W)*10)# length of noisy part of initial centerline
-    pad1 = pad//10
-    #padding at upstream end can be shorter than padding on downstream end
-    if pad1<5:
-        pad1 = 5
-    x = np.linspace(0, cl_length+(2*pad1)*deltas, int(cl_length/deltas+(2*pad1))+1) # x coordinate
+    cl_length = Length#((50*W)*10)# length of noisy part of initial centerline
+    x = np.linspace(0, cl_length+(2*pad)*deltas, int(cl_length/deltas+(2*pad))+1) # x coordinate
     y = 10.0 * (2*np.random.random_sample(int(cl_length/deltas)+1,)-1)
-    y = np.hstack((np.zeros((pad1),),y,np.zeros((pad1),))) # y coordinate
+    y = np.hstack((np.zeros((pad),),y,np.zeros((pad),))) # y coordinate
     MR = np.zeros_like(x)
    
     return Channel(x,y,W,D, MR)

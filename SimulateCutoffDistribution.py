@@ -16,28 +16,28 @@ D=3.4                       #constant width-average channel depth (m)
 W = 100                     #constant channel width (m)
 deltas = W//2;              #spacing of nodes along centerline
 Cf = 0.005                  #dimensionless Chezy friction factor
-kl = 20/(365*24*60*60.0)    #migration rate constant (m/s)
-dt = .25*365*24*60*60.0     #time step (s)
-pad= 200                    #number of nodes for periodic boundary
-saved_ts = 20               #timeteps between saving centerlines
+kl = 25/(365*24*60*60.0)    #migration rate constant (m/s)
+dt = .5*365*24*60*60.0     #time step (s)
+pad= 100                    #number of nodes for periodic boundary
+saved_ts = 100               #timeteps between saving centerlines
 crdist = 4*W                #how close banks get before cutoff in m
 cut_thresh = 500            #how many cutoffs to simulate, arbitrary if running for time
 
-#Set Variables for nonlocal efects
-decay_rate = dt/((5)*(365*24*60*60.0));   #ranges between 1/3 to 1/10, to be developed 
-bump_scale = 0              #to multiple kl by,amplitude of ne bump, range between 1 and 4, set to 0 for no nonlocal effects
+#Set Variables fror Cutoff nonlocal efects
+tau = 1#e-folding timescale for nonlocal effects in years
+decay_rate = dt/(tau*(365*24*60*60.0));   #this is the half-life on nonlocal effects, in units of seconds
+bump_scale = 0             #this is the magntiude of nonlocal effects in relative difference 
 
 
 
 #Set mode for titles
-mode = "experiment007"
+mode = "7"
 
 #Set Result Directory
-result_dir = "results/experiments/" 
+result_dir = "results/experiments/"+str(mode)+"/" 
 
 #Load existing Centerline
-filepath =result_dir+"InitialChannel_"+mode+".csv"
-#filepath = "sample_results/case2/24/" +"InitialCL_result.csv"
+filepath ="data/InitialChannel/InitialCL_"+str(mode)+".csv"
 
 ch= hkp.load_initial_channel(filepath, W, D, deltas)
 
@@ -59,7 +59,7 @@ plt.show()
 chb.cutoff_distributions(int(chb.cutoff_times[-1]), result_dir, mode)
 plt.title(str(len(chb.cutoff_times))+" cutoffs")
 plt.savefig(result_dir + mode+"_"+str(len(chb.cutoff_times))+"_timevsspace.png",bbox_inches='tight')
-plt.close()
+plt.show()
 
 
 # Save Resulting Centerline
@@ -67,7 +67,7 @@ xes = chb.channels[-1].x
 yes = chb.channels[-1].y
 cl = pd.DataFrame({'x': xes, 'y': yes});
 
-cl.to_csv(filepath, header = False, index = False)
+cl.to_csv(result_dir+"InitialChannel_result.csv", header = False, index = False)
 
 
 

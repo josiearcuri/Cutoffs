@@ -8,10 +8,9 @@ import numpy as np
 import SpaceTime 
 import os
 
-num = 8
+num = 7
 #Set location of cutoff distribution to tests
-file = "sample_results/case2/"+str(num)+"/Case2_Run"+str(num)+"_500_cutoffs_distribution.csv"
-bends = "sample_results/case2/"+str(num)+"/bendbybendmr.csv"
+file = "results/experiments/"+str(num)+"/"+str(num)+"_500_cutoffs_distribution.csv"#"sample_results/case2/"+str(num)+"/Case2_Run"+str(num)+"_500_cutoffs_distribution.csv"
 
 result_dir = "sample_results/case2/"+str(num)+"/"
 
@@ -31,10 +30,10 @@ W = int(1.19*(np.mean(cutoffs['cutlen'])))
 dt = 2*int(year/500)
 max_search_d = 1
 max_search_t = 1
-print(dt/2)
-input()
-print(length)
-print(year)
+#print(dt/2)
+#input()
+#print(length)
+#print(year)
 
 #Check if data fits test criteria/boundary effects small enough to ignore
 ##print("Last cutoff occured at " + str(year)+ " years")
@@ -57,7 +56,7 @@ Kest = SpaceTime.RipleysKEstimator_spacetime(t_max=year, d_max=length, t_min=0, 
 #Run tests that output figures when complete
 [D,D_null, D_upper, D_lower]=Kest(cutoffs= cutoffs, mode = 'K_st', max_search_d= max_search_d, max_search_t = max_search_t, plotornot=1)
 normed = (2*D/(D_upper-D_lower))
-#plt.savefig(result_dir +"Case2_Run5_"+str(len(cutoffs['time']))+"_cutoffs_Dplot.png", transparent=False, bbox_inches = 'tight')
+plt.savefig("results/experiments/"+str(num)+"/"+str(len(cutoffs['time']))+"_cutoffs_Dplot.png", transparent=False, bbox_inches = 'tight')
 
 #ax = plt.gca()
 
