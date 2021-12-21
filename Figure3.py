@@ -40,8 +40,10 @@ tau = cutoffs['NE timescale [yr]'].values[mask] #nonlocal effect half-life in ye
 M = cutoffs['NE magnitude [relative difference]'].values[mask]  #nonlocal effect magnitude in relative difference
 period = np.asarray([get_cutoff_period(i) for i in ID])
 freq = 1/period
+NE = M*tau/period
 tau = tau
-
+#linear regression between NE and D(or D*)
+results_NE = lr(NE, Dstar)
 
 #linear regression between duration and D(or D*)
 results_tau = lr(tau, Dstar)
@@ -52,12 +54,24 @@ results_freq = lr(freq, Dstar)
 results_M = lr(M, Dstar)
 
 #plotting set-up
-fig, axes = plt.subplots(2,1,figsize=(9, 5))
-[ax1, ax2] = axes
+fig, axes = plt.subplots(3,1,figsize=(9, 9))
+[ax1, ax2, ax3] = axes
 plt.rcParams.update({'font.size': 10})
 
+#Upper axes
 
-#upper axes
+#ax1.fill([-5, -5, 11, 11], [-1,1,1,-1], color = 'lightgrey', edgecolor = None, alpha = .5, label = "Monte Carlo simulation envelope", zorder = 0)
+ax3.plot([0, int(np.max(NE))], [results_NE.intercept,results_NE.intercept+int(np.max(NE))*results_NE.slope], ls = '--', linewidth = 1, c = 'k', zorder =1, label = "y = "+str(round(results_NE.slope, 2))+"x + "+str(round(results_NE.intercept, 2))+", $r^{ 2}$ = "+str(round(results_NE.rvalue**2,3)))
+sc3=ax3.scatter(NE, Dstar, s=20, c=freq, edgecolor = 'k', cmap = 'cividis', linewidths = .5, alpha = .8, vmin = 0.1, vmax = .3, label = '_nolegend_', zorder = 2)
+#ax2.plot([0, 1], [results.intercept,results.intercept+3*results.slope], ls = '--', linewidth = .5, c= 'k', zorder =0)
+
+
+
+ax3.set_xlim([-1,10])
+ax3.set_ylim([-2,2.5])
+ax3.set_xlabel(r'$\tau$ * $M$ * $f$')
+
+#Middle axes
 
 #ax2.fill([-5, -5, 11, 11], [-1,1,1,-1], color = 'lightgrey', edgecolor = None, alpha = .5, label = "Monte Carlo simulation envelope", zorder = 0)
 ax2.plot([0, int(np.max(tau))], [results_tau.intercept,results_tau.intercept+int(np.max(tau))*results_tau.slope], ls = '--', linewidth = 1, c = 'k', zorder =1, label = "y = "+str(round(results_tau.slope, 2))+"x + "+str(round(results_tau.intercept, 2))+", $r^{ 2}$ = "+str(round(results_tau.rvalue**2,3)))
@@ -66,7 +80,7 @@ sc2=ax2.scatter(tau, Dstar, s=20, c=freq, edgecolor = 'k', cmap = 'cividis', lin
 
 ax2.set_ylabel('D *', rotation = 'horizontal')
 ax2.set_xlim([-.5,11])
-ax2.set_ylim([-2,2.75])
+ax2.set_ylim([-2,2.5])
 
 ax2.set_xlabel(r'$\tau$')
 
@@ -80,8 +94,8 @@ sc1=ax1.scatter(M, Dstar, s=20, c=freq, edgecolor = 'k', cmap = 'cividis', linew
 
 
 ax1.set_ylabel('D *', rotation = 'horizontal')
-ax1.set_xlim([-.15,3.15])
-ax1.set_ylim([-2,2.75])
+ax1.set_xlim([-.5,3.5])
+ax1.set_ylim([-2,2.5])
 
 ax1.set_xlabel('$M$')
 
@@ -98,7 +112,7 @@ ax1.axhline(y=0, xmin = 0,c='k',linewidth = 1, xmax = max(M)+10, zorder =1, labe
 [ax.tick_params(axis='x', labelsize = 9) for ax in axes]
 #Format colorbar for both axes
 c1 = fig.colorbar(sc1, ax = axes, shrink = .7)
-c1.ax.set_title('cutoff \nfrequency\n[1/year]\n', fontsize = 9, pad = .1)
+c1.ax.set_title('$f$\n[1/year]\n', fontsize = 9, pad = .1)
 c1.ax.tick_params(labelsize=8)
 
 #Save figure
