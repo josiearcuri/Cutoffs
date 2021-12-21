@@ -1,11 +1,12 @@
 
-"""This script runs statistical tests on model-output cutoff distributions - determines where cutoffs are more clustered or regularly spaced than randomly generated point patterns 
+"""This script runs statistical tests on model-output cutoff distributions - determines where cutoffs are more clustered or regularly spaced than randomly generated point patterns
+@JA 2021
 """
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import SpaceTime 
+import SpaceTime
 import os
 
 num = 7
@@ -41,13 +42,13 @@ if year >= (max_search_t*dt)/10:
     print("time span is sufficently large for statistical tests")
 else:
     print("Warning: model run long enough to only search over "+str(int(4*max_search_t*dt))+" year windows")
-        
+
 
 if int(length) >=(max_search_d*W)/10:
     print("centerline is sufficently long enough for statistical tests")
-else: 
+else:
     print("Warning: centerline only long enough to search over " +str(int(4*max_search_d*W))+" ch-w windows")
-#input()   
+#input()
 
 
 #Initialize Ripley's K test for 2d space-time
@@ -64,4 +65,3 @@ plt.close()
 print("D = " + str(D))
 
 print("normed = " +str(normed))
-

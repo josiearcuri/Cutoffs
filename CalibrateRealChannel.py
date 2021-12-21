@@ -1,6 +1,7 @@
 """
-This script uses the HKplus functions to load an existing centerline output from Mtlab toolbox RivMap (or any other centerline), run it for a certain number of years, then save the resulting centerline for later use.  
+This script uses the HKplus functions to load an existing centerline output from Mtlab toolbox RivMap (or any other centerline), run it for a certain number of years, then save the resulting centerline for later use.
 
+@JA 2021
 """
 import math
 import matplotlib.pyplot as plt
@@ -23,7 +24,7 @@ saved_ts = 20               # which time steps centerline will be saved at
 #Set Variables fro nonlocal efects
 #Set Variables fror Cutoff nonlocal efects
 decay_rate = dt/(5*(365*24*60*60.0));   #this is the half-life on nonlocal effects, in units of seconds
-bump_scale = 2             #this is the magntiude of nonlocal effects in relative difference between 
+bump_scale = 2             #this is the magntiude of nonlocal effects in relative difference between
 cut_thresh = 5              #how many cutoffs to simulate, arbitrary if running for time
 
 #Set Result Directory
@@ -42,9 +43,9 @@ chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], c
 chb.plot_channels()
 plt.title("Initial Centerline")
 plt.show()
- 
+
 #Migrate
-chb.migrate_cuts(saved_ts,deltas,pad,crdist,Cf,kl,dt) 
+chb.migrate_cuts(saved_ts,deltas,pad,crdist,Cf,kl,dt)
 
 #Plot resulting centerline
 chb.plot_channels()

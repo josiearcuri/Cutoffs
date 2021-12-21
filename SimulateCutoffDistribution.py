@@ -54,7 +54,9 @@ chb.migrate_cuts(saved_ts,deltas,pad,crdist,Cf,kl,dt)
 #Plot resulting Centerline
 chb.plot_channels()
 plt.show()
-
+#Save Sinuosity time series
+times = chb.cl_times
+sins = chb.sinuosity
 # Save Cutoff Distributions for Clustering Tests #
 chb.cutoff_distributions(int(chb.cutoff_times[-1]), result_dir, mode)
 plt.title(str(len(chb.cutoff_times))+" cutoffs")

@@ -1,6 +1,7 @@
 """
-This script uses the HKplus functions to load an existing centerline, allow that to migrate until a certain number of cutoffs have occurred, then save the resulting centerline for later use.  
+This script uses the HKplus functions to load an existing centerline, allow that to migrate until a certain number of cutoffs have occurred, then save the resulting centerline for later use.
 
+@JA 2021
 """
 import math
 import matplotlib.pyplot as plt
@@ -24,7 +25,7 @@ cut_thresh = 0
 #Set Variables fror Cutoff nonlocal efects
 tau = 1#e-folding timescale for nonlocal effects in years
 decay_rate = dt/(tau*(365*24*60*60.0));   #this is the half-life on nonlocal effects, in units of seconds
-bump_scale = 0             #this is the magntiude of nonlocal effects in relative difference 
+bump_scale = 0             #this is the magntiude of nonlocal effects in relative difference
 
 
 #Load Existing Centerline
@@ -45,12 +46,12 @@ chb = hkp.ChannelBelt(channels=[ch],cutoffs=[],cl_times=[0.0],cutoff_times=[], c
 chb.plot_channels()
 plt.title("Initial Centerline")
 plt.show()
- 
-#Migrate Cneterline for cut_thresh cutoffs
-#chb.migrate_cuts(saved_ts,deltas,pad,crdist,Cf,kl,dt) 
 
-#Migrate Centerline for nit 
-chb.migrate_years(nit,saved_ts,deltas,pad,crdist,Cf,kl,dt) 
+#Migrate Cneterline for cut_thresh cutoffs
+#chb.migrate_cuts(saved_ts,deltas,pad,crdist,Cf,kl,dt)
+
+#Migrate Centerline for nit
+chb.migrate_years(nit,saved_ts,deltas,pad,crdist,Cf,kl,dt)
 
 #Plot resulting centerline
 chb.plot_channels()
@@ -64,5 +65,3 @@ yes = chb.channels[-1].y
 cl = pd.DataFrame({'x': xes, 'y': yes});
 
 cl.to_csv(result_dir, header = False, index = False)
-
-
