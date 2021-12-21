@@ -16,8 +16,6 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.spatial import distance
 
 
-
-
 def update_progress(progress, start_time):
     """progress bar from https://stackoverflow.com/questions/3160699/python-progress-bar
     update_progress() : Displays or updates a console progress bar
