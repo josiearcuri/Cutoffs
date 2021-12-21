@@ -2,3 +2,4 @@
 **/*.ipynb_checkpoints/
 **/*_old.py
 **/HKplus/__pycache__/
+**/RSfun/__pycache__/
